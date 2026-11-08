@@ -1,0 +1,58 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  draft-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the release version
+        if: github.ref_type == 'tag'
+        run: |
+          version="$(sed -n 's/.*version: "\([^"]*\)".*/\1/p' mygo.config.ts | head -1)"
+          test "$GITHUB_REF_NAME" = "v$version"
+      # `-upload` needs the key and the `updates` block; say so plainly instead
+      # of failing deep inside the build (the repository's README).
+      - name: Check the updater is set up
+        env:
+          MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
+        run: |
+          grep -q 'publicKey:' mygo.config.ts || { echo "mygo.config.ts has no updates.publicKey"; exit 1; }
+          test -n "$MYGO_UPDATER_PRIVATE_KEY" || { echo "the MYGO_UPDATER_PRIVATE_KEY secret is not set"; exit 1; }
+      - name: Create the draft release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+              --draft --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
+          fi
+
+  build:
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+    needs: draft-release
+    name: macOS
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Build and upload release updates
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
+        run: go tool mygo build -platform "darwin/arm64,darwin/amd64" -upload

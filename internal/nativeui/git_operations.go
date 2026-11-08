@@ -1,0 +1,713 @@
+package nativeui
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"path/filepath"
+	"slices"
+	"strings"
+	"time"
+
+	"github.com/egoist/mygo/ui"
+	"github.com/thewei/solco-gitkit/gitworkbench"
+)
+
+// gitOpTimeout bounds one working-tree operation.
+const gitOpTimeout = gitworkbench.MutateTimeout
+
+// gitNetworkTimeout bounds one explicit fetch/pull/push: the Runner's own
+// network budget. The 30s working-tree budget must not parent these —
+// Runner.run only tightens a parent deadline, never extends one — so the
+// old shared 30s parent killed every push that took longer than half a
+// minute, and large pushes could then never land again (each failure left
+// the pile, and the payload, bigger).
+const gitNetworkTimeout = gitworkbench.NetworkTimeout
+
+// runGitOp runs one repository mutation off the UI lane and reports the
+// outcome as a toast; successful ops refresh the snapshot.
+func (s *Shell) runGitOp(name string, run func(ctx context.Context, root string) (string, error)) {
+	s.runGitOpBudget(name, gitOpTimeout, run)
+}
+
+// runGitNetworkOp is runGitOp under the network budget, for Fetch/Pull/Push.
+func (s *Shell) runGitNetworkOp(name string, run func(ctx context.Context, root string) (string, error)) {
+	s.runGitOpBudget(name, gitNetworkTimeout, run)
+}
+
+func (s *Shell) runGitOpBudget(name string, budget time.Duration, run func(ctx context.Context, root string) (string, error)) {
+	s.runGitOpFlow(name, budget, run, false)
+}
+
+// runGitOpFlow is the one runner. retried marks a run that already went
+// through "Stash and reapply", whose refusal is not offered that way again.
+func (s *Shell) runGitOpFlow(name string, budget time.Duration, run func(ctx context.Context, root string) (string, error), retried bool) {
+	if s.git == nil || s.git.root == "" {
+		return
+	}
+	if s.git.opBusy {
+		// The buttons dim while an op runs, but a click can still land
+		// (stale frame, menu entry). Swallowing it silently is what made
+		// Push feel dead; say what is happening instead.
+		s.pendingToast = "Another Git operation is still running."
+		return
+	}
+	root := s.git.root
+	s.git.opBusy = true
+	slog.Info("git op start", "op", name)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), budget)
+		defer cancel()
+		started := time.Now()
+		notice, err := run(ctx, root)
+		var conflictPaths []string
+		var mergePaused bool
+		if err != nil && integrationOps[name] {
+			if ge, ok := gitworkbench.GitError(err); ok && len(ge.Paths) > 0 {
+				conflictPaths = ge.Paths
+			} else if st, serr := s.git.runner.SequencerState(ctx, root); serr == nil {
+				conflictPaths, mergePaused = st.UnmergedPaths, st.Kind == gitworkbench.SequencerMerge && st.Unmerged > 0
+			}
+		}
+		slog.Info("git op done", "op", name, "duration_ms", time.Since(started).Milliseconds(), "ok", err == nil, "err_class", gitErrClass(err))
+		offerAutostash := !retried && autostashOps[name] && gitworkbench.LocalChangesBlocked(err)
+		s.applyOnUI(func() {
+			s.git.opBusy = false
+			if s.git == nil || s.git.root != root {
+				return
+			}
+			switch {
+			case err != nil && offerAutostash && len(conflictPaths) == 0 && !mergePaused:
+				// Local changes stand in the way: say so, and offer Fork's
+				// "Stash and reapply" as the way through.
+				s.openGitNotice(name, err, checkoutBlockedPaths(err), false)
+				s.offerAutostash(name, budget, run)
+			case err != nil && integrationOps[name]:
+				s.openGitNotice(name, err, conflictPaths, mergePaused)
+			case err != nil && checkoutOps[name] && len(checkoutBlockedPaths(err)) > 0:
+				s.openGitNotice(name, err, checkoutBlockedPaths(err), false)
+			case err != nil:
+				s.pendingToast = name + " failed: " + gitFailureText(err)
+				// A raw git exit line tells a user nothing here; the one
+				// refusal a sync button can produce on purpose deserves its
+				// own sentence (device E2E 2026-11-03).
+				if name == "Pull" && s.git.upstream.OK && s.git.upstream.Ahead > 0 && s.git.upstream.Behind > 0 {
+					s.pendingToast = "Pull failed: local and " + s.git.upstream.Branch + " have diverged — merge or rebase first"
+				}
+				if name == "Revert Commit" || name == "Merge Commit" || name == "Cherry-pick Commit" {
+					s.pendingToast += " If conflicts occurred, open Local Changes to resolve or abort the operation."
+				}
+				// A failed Git mutation can leave MERGE_HEAD/REVERT_HEAD and
+				// conflict markers: the re-read below shows them rather than a
+				// stale clean state from before the attempted operation.
+			case notice != "":
+				s.pendingToast = notice
+			}
+			s.git.cache.Invalidate(root)
+			s.checkFetchedAt(true)
+			s.git.preflight = nil
+			s.ensureGitSnapshot(true)
+			s.loadBranches()
+		})
+	}()
+}
+
+// gitErrClass names the coarse failure class for logs without echoing any
+// stderr text (remote URLs and ref names stay out of the log).
+func gitErrClass(err error) string {
+	if err == nil {
+		return ""
+	}
+	if ge, ok := gitworkbench.GitError(err); ok {
+		return string(ge.Class)
+	}
+	return "error"
+}
+
+// gitFailureText is the one sentence a failed Git operation shows: Git's own
+// reason read from its output (rejected, sign-in, network, remote hook …),
+// else the domain's refusal text, else the first error line. "exit status 1"
+// alone told a user nothing (device E2E 2026-11-03: Push "did not pass").
+func gitFailureText(err error) string {
+	if reason := gitworkbench.Explain(err); reason != "" {
+		return reason
+	}
+	if ge, ok := gitworkbench.GitError(err); ok && ge.Stderr == "" {
+		if inner := errors.Unwrap(ge); inner != nil {
+			return strings.TrimSpace(inner.Error())
+		}
+	}
+	return firstErrLine(err)
+}
+
+func firstErrLine(err error) string {
+	line := err.Error()
+	if i := strings.IndexByte(line, '\n'); i > 0 {
+		line = line[:i]
+	}
+	if len(line) > 200 {
+		line = line[:200]
+	}
+	return strings.TrimSpace(line)
+}
+
+// stageFiles moves the worktree changes of paths into the index.
+func (s *Shell) stageFiles(paths []string) {
+	if len(paths) == 0 {
+		return
+	}
+	s.runGitOp("Stage", func(ctx context.Context, root string) (string, error) {
+		if err := s.git.runner.Stage(ctx, root, paths); err != nil {
+			return "", err
+		}
+		return "Staged " + pluralFiles(len(paths)), nil
+	})
+}
+
+// unstageFiles moves the index changes of paths back to the worktree.
+func (s *Shell) unstageFiles(paths []string) {
+	if len(paths) == 0 {
+		return
+	}
+	noHead := s.git.snapshot != nil && s.git.snapshot.NoHead
+	s.runGitOp("Unstage", func(ctx context.Context, root string) (string, error) {
+		if err := s.git.runner.Unstage(ctx, root, noHead, paths); err != nil {
+			return "", err
+		}
+		return "Unstaged " + pluralFiles(len(paths)), nil
+	})
+}
+
+// discardChanges throws away worktree changes after the confirm dialog.
+// kind "git-discard" carries tracked paths, "git-delete-untracked" carries
+// untracked files (deleted, not recoverable — hence the confirmation).
+func (s *Shell) discardChanges(paths []string) {
+	tracked, untracked := s.splitTrackedUntracked(paths)
+	if len(tracked) > 0 {
+		s.openConfirm("git-discard", joinPathsTarget(tracked),
+			"Discard Changes in "+pluralFiles(len(tracked))+"?",
+			"This can't be undone.")
+	}
+	if len(untracked) > 0 {
+		s.openConfirm("git-delete-untracked", joinPathsTarget(untracked),
+			"Delete "+pluralFiles(len(untracked))+"?",
+			"Untracked files can't be recovered.")
+	}
+}
+
+func (s *Shell) fetchRepo() {
+	s.runGitNetworkOp("Fetch", func(ctx context.Context, root string) (string, error) {
+		remote := s.git.runner.DefaultRemote(ctx, root)
+		if err := s.git.runner.Fetch(ctx, root, remote); err != nil {
+			return "", err
+		}
+		return "Fetched " + remote, nil
+	})
+}
+
+// pullRepo is the header Pull: fast-forward only. The branch's own upstream
+// decides where it pulls from — the first remote and the same-named branch
+// are only the guess for a branch that has none (pullWith).
+func (s *Shell) pullRepo() { s.pullWith(gitworkbench.PullFastForward, "Pull") }
+
+func (s *Shell) pushRepo() {
+	s.runGitNetworkOp("Push", func(ctx context.Context, root string) (string, error) {
+		remote := s.git.runner.DefaultRemote(ctx, root)
+		branch := s.git.runner.CurrentBranch(ctx, root)
+		if branch == "" {
+			return "", errGitOp("detached HEAD: check out a branch first")
+		}
+		setUpstream := !s.git.upstream.OK
+		theirs := branch
+		if up := s.git.upstream; up.OK && up.Remote != "" {
+			remote, theirs = up.Remote, up.Branch
+		}
+		if err := s.git.runner.PushTo(ctx, root, remote, branch, theirs, setUpstream); err != nil {
+			return "", err
+		}
+		notice := "Pushed " + remote + "/" + theirs
+		if setUpstream {
+			notice += " (tracking set)"
+		}
+		return notice, nil
+	})
+}
+
+func (s *Shell) stashChanges() {
+	s.runGitOp("Stash", func(ctx context.Context, root string) (string, error) {
+		if err := s.git.runner.StashPush(ctx, root, ""); err != nil {
+			return "", err
+		}
+		return "Changes stashed", nil
+	})
+}
+
+func (s *Shell) popStash(ref string) {
+	s.runGitOp("Stash Pop", func(ctx context.Context, root string) (string, error) {
+		if err := s.git.runner.StashPop(ctx, root, ref); err != nil {
+			return "", err
+		}
+		return "Stash applied", nil
+	})
+}
+
+func (s *Shell) dropStash(ref string) {
+	name := ref
+	for _, st := range s.git.stashes {
+		if st.Ref == ref {
+			name = stashTitle(st.Subject)
+		}
+	}
+	s.openConfirm("git-drop-stash", ref, "Delete Stash “"+name+"”?",
+		"Delete stash from repository. The stashed changes are gone for good.")
+}
+
+func (s *Shell) deleteBranch(name string) {
+	s.openConfirm("git-delete-branch", name, "Delete Branch “"+name+"”?",
+		"Git refuses if it has unmerged commits.")
+}
+
+// confirmMergeBranch only offers a non-rewriting, fast-forward-only merge.
+// A divergent target cannot create a surprise merge commit through this path.
+func (s *Shell) confirmMergeBranch(target string) {
+	if s.git == nil || s.git.root == "" || target == "" || target == s.currentBranchName() {
+		return
+	}
+	s.openConfirm("git-merge-ff", target, "Fast-Forward Merge “"+target+"”?",
+		"Moves the current branch forward to "+target+". Refused if the branches have diverged or the working tree is dirty.")
+}
+
+// openMergeDialog lets one branch-menu action explain both strategies
+// before the user reaches a transaction confirmation.
+func (s *Shell) openMergeDialog(target string) {
+	if s.git == nil || s.git.root == "" || target == "" || target == s.currentBranchName() || s.git.opBusy {
+		return
+	}
+	s.mergeTarget = target
+	s.mergeRepoRoot = s.git.root
+	s.mergeStrategy = 0
+	s.mergeDialogOpen = true
+}
+
+// confirmMergeNoFFBranch is separate from the original safe FF-only path.
+// This operation may leave conflicts; Local Changes exposes resolution.
+func (s *Shell) confirmMergeNoFFBranch(target string) {
+	if s.git == nil || s.git.root == "" || target == "" || target == s.currentBranchName() {
+		return
+	}
+	s.openConfirm("git-merge-no-ff", target, "Create Merge Commit With “"+target+"”?",
+		"Merges "+target+" into the current branch. If files conflict, resolve them in Local Changes, then continue or abort.")
+}
+
+// confirmRebaseOnto replays the current branch on top of target. A rebase that
+// stops on conflicts is cancelled by the Runner, so this confirm may promise
+// that nothing is left half-done.
+func (s *Shell) confirmRebaseOnto(target string) {
+	if s.git == nil || s.git.root == "" || target == "" || target == s.currentBranchName() || s.git.opBusy {
+		return
+	}
+	s.openConfirm("git-rebase", target, "Rebase Current Branch Onto “"+target+"”?",
+		"Replays the current branch's commits on top of "+target+" and rewrites them. If anything conflicts, the rebase is cancelled and nothing changes. Requires a clean working tree.")
+}
+
+func (s *Shell) confirmCherryPickCommit(hash, subject string) {
+	if s.git == nil || s.git.root == "" || !gitworkbenchFullHash(hash) {
+		return
+	}
+	s.openConfirm("git-cherry-pick", hash, "Cherry-pick Commit?",
+		"Applies "+subject+" to the current branch. Requires a clean working tree.")
+}
+
+func (s *Shell) continueSequencer() {
+	if s.git == nil || !s.git.sequencerChecked || s.git.sequencer.Unmerged != 0 {
+		return
+	}
+	kind := s.git.sequencer.Kind
+	if kind == gitworkbench.SequencerNone || kind == gitworkbench.SequencerUnsupported {
+		return
+	}
+	s.runGitOp("Continue "+string(kind), func(ctx context.Context, root string) (string, error) {
+		if err := s.git.runner.FinishSequencer(ctx, root, kind, false); err != nil {
+			return "", err
+		}
+		return "Completed " + string(kind), nil
+	})
+}
+
+// sequencerTitle capitalizes the sequencer kind for the confirm title, so
+// dialog titles share the Title Case of the confirm family (F158).
+func sequencerTitle(kind gitworkbench.SequencerKind) string {
+	if kind == "" {
+		return ""
+	}
+	s := string(kind)
+	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+func (s *Shell) confirmAbortSequencer() {
+	if s.git == nil || !s.git.sequencerChecked {
+		return
+	}
+	kind := s.git.sequencer.Kind
+	if kind == gitworkbench.SequencerNone || kind == gitworkbench.SequencerUnsupported {
+		return
+	}
+	s.openConfirm("git-sequencer-abort", string(kind), "Abort "+sequencerTitle(kind)+"?",
+		"Returns to the state before the operation. Edits made while resolving conflicts are lost.")
+}
+
+func (s *Shell) confirmRevertCommit(hash, subject string) {
+	if s.git == nil || s.git.root == "" || !gitworkbenchFullHash(hash) {
+		return
+	}
+	s.openConfirm("git-revert-commit", hash, "Revert Commit?",
+		"Creates a commit that reverses: "+subject+". Requires a clean working tree.")
+}
+
+// gitworkbenchFullHash keeps the UI's command identity exact, not the
+// abbreviated display hash. The domain layer revalidates independently.
+func gitworkbenchFullHash(hash string) bool {
+	if len(hash) != 40 && len(hash) != 64 {
+		return false
+	}
+	for _, ch := range hash {
+		if ch >= '0' && ch <= '9' || ch >= 'a' && ch <= 'f' || ch >= 'A' && ch <= 'F' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func (s *Shell) undoLastCommit() {
+	s.openConfirm("git-undo-commit", "", "Undo Last Commit?",
+		"Its changes stay staged. Nothing is discarded.")
+}
+
+// deleteTagConfirm removes a tag after confirmation.
+func (s *Shell) deleteTagConfirm(name string) {
+	s.openConfirm("git-delete-tag", name, "Delete Tag “"+name+"”?",
+		"Commits are not affected.")
+}
+
+// addWorktree checks out a new work tree at an absolute path.
+func (s *Shell) addWorktree(path string) {
+	if strings.TrimSpace(path) == "" {
+		return
+	}
+	s.runGitOp("Add Worktree", func(ctx context.Context, root string) (string, error) {
+		if err := s.git.runner.AddWorktree(ctx, root, path); err != nil {
+			return "", err
+		}
+		return "Worktree added at " + path, nil
+	})
+}
+
+// reviewCommit switches the review to one commit's diff (All Commits).
+func (s *Shell) reviewCommit(hash string) { s.reviewCommitAs(hash, false) }
+
+// reviewCommitAs reads one commit's diff; compare reads it against the working
+// tree instead (the commit's right-click "Compare to Local Changes").
+func (s *Shell) reviewCommitAs(hash string, compare bool) {
+	if s.git == nil || s.git.root == "" || hash == "" {
+		return
+	}
+	if s.git.source == gdSourceCommit && s.git.commitHash == hash && s.git.compare == compare {
+		return
+	}
+	s.git.compare = compare
+	root := s.git.root
+	isStash := slices.ContainsFunc(s.git.stashes, func(st gitworkbench.Stash) bool { return st.Hash == hash })
+	s.git.source = gdSourceCommit
+	s.git.commitHash = hash
+	s.gitCommitBodyOpen = false
+	s.git.commitSnap = nil
+	s.git.commitMeta, s.git.commitBody = nil, ""
+	s.git.gdFiles = nil
+	s.git.gdFilesFor = nil
+	s.git.gdRows = nil
+	s.git.gdRowsDirty = true
+	s.git.gdList = ui.ListState{}
+	s.git.gdCurrent = 0
+	s.git.gdSelFile, s.git.gdSelHunk = -1, -1
+	s.git.gdFinding, s.git.gdQuery = false, ""
+	s.git.gdMatches, s.git.gdMatchesFor = nil, ""
+	s.git.gdHScroll = map[string]float32{}
+	s.git.gdFileMatches = map[int]bool{}
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), gitworkbench.ReadTimeout*2)
+		defer cancel()
+		snapshot := s.git.runner.CommitSnapshot
+		if compare {
+			snapshot = s.git.runner.CompareToWorktree
+		}
+		if isStash && !compare {
+			// A stash reads as a whole: tracked changes plus untracked files.
+			snapshot = s.git.runner.StashSnapshot
+		}
+		snap, err := snapshot(ctx, root, hash)
+		body, _ := s.git.runner.CommitMessage(ctx, root, hash)
+		var meta *gitworkbench.CommitInfo
+		if found, cerr := s.git.runner.CommitByHash(ctx, root, hash); cerr == nil {
+			meta = found
+		}
+		s.applyOnUI(func() {
+			if s.git == nil || s.git.root != root || s.git.source != gdSourceCommit || s.git.commitHash != hash {
+				return
+			}
+			if err != nil {
+				s.pendingToast = "Could not read commit: " + firstErrLine(err)
+				s.reviewLocalChanges()
+				return
+			}
+			s.git.commitSnap = snap
+			s.git.commitMeta = meta
+			s.git.commitBody = body
+			s.gdSetFiles()
+		})
+	}()
+}
+
+// reviewLocalChanges switches the review back to the worktree (and refreshes
+// it, since it may have moved while a commit was up).
+func (s *Shell) reviewLocalChanges() {
+	if s.git == nil {
+		return
+	}
+	// A commit-card Back or an operation fallback must switch both the
+	// navigator and review source, not leave All Commits selected above
+	// a mutable working-tree Diff.
+	s.commitsMode = false
+	if s.git.source == gdSourceWorktree {
+		return
+	}
+	s.git.source = gdSourceWorktree
+	s.git.compare = false
+	s.git.commitSnap = nil
+	s.git.commitMeta, s.git.commitBody = nil, ""
+	s.git.gdFiles = nil
+	s.git.gdFilesFor = nil
+	s.git.gdRows = nil
+	s.git.gdRowsDirty = true
+	s.git.gdList = ui.ListState{}
+	s.git.gdCurrent = 0
+	s.git.gdFinding, s.git.gdQuery = false, ""
+	s.ensureGitSnapshot(true)
+}
+
+// gdReviewingCommit reports whether the surface shows a commit's diff.
+func (s *Shell) gdReviewingCommit() bool {
+	return s.git != nil && s.git.source == gdSourceCommit
+}
+
+func (s *Shell) runGitConfirm(kind, target string) {
+	switch kind {
+	case "git-switch-branch":
+		s.switchBranch(target)
+	case "git-discard":
+		s.runGitOp("Discard", func(ctx context.Context, root string) (string, error) {
+			paths := splitPathsTarget(target)
+			if err := s.git.runner.Discard(ctx, root, paths); err != nil {
+				return "", err
+			}
+			return "Discarded changes in " + pluralFiles(len(paths)), nil
+		})
+	case "git-delete-untracked":
+		s.runGitOp("Delete", func(ctx context.Context, root string) (string, error) {
+			paths := splitPathsTarget(target)
+			if err := s.git.runner.DeleteUntracked(root, paths); err != nil {
+				return "", err
+			}
+			return "Deleted " + pluralFiles(len(paths)), nil
+		})
+	case "git-delete-branch":
+		s.runGitOp("Delete Branch", func(ctx context.Context, root string) (string, error) {
+			if err := s.git.runner.DeleteBranch(ctx, root, target); err != nil {
+				return "", err
+			}
+			return "Deleted branch " + target, nil
+		})
+	case "git-drop-stash":
+		s.runGitOp("Drop Stash", func(ctx context.Context, root string) (string, error) {
+			if err := s.git.runner.StashDrop(ctx, root, target); err != nil {
+				return "", err
+			}
+			return "Dropped " + target, nil
+		})
+	case "git-merge-ff":
+		s.runGitOp("Fast-forward Merge", func(ctx context.Context, root string) (string, error) {
+			if err := s.git.runner.MergeFastForward(ctx, root, target); err != nil {
+				return "", err
+			}
+			return "Fast-forwarded current branch to " + target, nil
+		})
+	case "git-merge-no-ff":
+		s.runGitOp("Merge Commit", func(ctx context.Context, root string) (string, error) {
+			if err := s.git.runner.MergeNoFastForward(ctx, root, target); err != nil {
+				return "", err
+			}
+			return "Merged branch " + target, nil
+		})
+	case "git-checkout-remote":
+		s.runCheckoutRemote(target)
+	case "git-delete-remote-branch":
+		s.runDeleteRemoteBranch(target)
+	case "git-reset-soft":
+		s.runReset(target, gitworkbench.ResetSoft)
+	case "git-reset-mixed":
+		s.runReset(target, gitworkbench.ResetMixed)
+	case "git-reset-hard":
+		s.runReset(target, gitworkbench.ResetHard)
+	case "git-remove-remote":
+		s.runGitOp("Remove Remote", func(ctx context.Context, root string) (string, error) {
+			if err := s.git.runner.RemoveRemote(ctx, root, target); err != nil {
+				return "", err
+			}
+			return "Removed remote " + target, nil
+		})
+	case "git-rebase":
+		s.runGitOp("Rebase", func(ctx context.Context, root string) (string, error) {
+			if err := s.git.runner.RebaseOnto(ctx, root, target); err != nil {
+				return "", err
+			}
+			return "Rebased current branch onto " + target, nil
+		})
+	case "git-cherry-pick":
+		s.runGitOp("Cherry-pick Commit", func(ctx context.Context, root string) (string, error) {
+			if err := s.git.runner.CherryPickCommit(ctx, root, target); err != nil {
+				return "", err
+			}
+			return "Cherry-picked " + target[:8], nil
+		})
+	case "git-sequencer-abort":
+		s.runGitOp("Abort "+target, func(ctx context.Context, root string) (string, error) {
+			if err := s.git.runner.FinishSequencer(ctx, root, gitworkbench.SequencerKind(target), true); err != nil {
+				return "", err
+			}
+			return "Aborted " + target, nil
+		})
+	case "git-revert-commit":
+		s.runGitOp("Revert Commit", func(ctx context.Context, root string) (string, error) {
+			if err := s.git.runner.RevertCommit(ctx, root, target); err != nil {
+				return "", err
+			}
+			return "Reverted commit " + target[:8], nil
+		})
+	case "git-undo-commit":
+		s.runGitOp("Undo Commit", func(ctx context.Context, root string) (string, error) {
+			if err := s.git.runner.UndoLastCommit(ctx, root); err != nil {
+				return "", err
+			}
+			return "Last commit undone (changes kept staged)", nil
+		})
+	case "git-merge-squash":
+		s.runGitOp("Squash Merge", func(ctx context.Context, root string) (string, error) {
+			if err := s.git.runner.MergeSquash(ctx, root, target); err != nil {
+				return "", err
+			}
+			return "Squashed " + target + " into the working tree — review and Commit", nil
+		})
+	case "git-checkout-detached":
+		s.runGitOp("Check Out Commit", func(ctx context.Context, root string) (string, error) {
+			if err := s.git.runner.CheckoutDetached(ctx, root, target); err != nil {
+				return "", err
+			}
+			return "HEAD is detached at " + target[:8], nil
+		})
+	case "git-restore-file":
+		hash, path, _ := strings.Cut(target, "\x00")
+		s.runGitOp("Restore File", func(ctx context.Context, root string) (string, error) {
+			if err := s.git.runner.RestoreFile(ctx, root, hash, path); err != nil {
+				return "", err
+			}
+			return "Restored " + path + " from " + hash[:8], nil
+		})
+	case "git-delete-remote-tag":
+		remote, name, _ := strings.Cut(target, "\x00")
+		s.runGitNetworkOp("Delete Remote Tag", func(ctx context.Context, root string) (string, error) {
+			if err := s.git.runner.DeleteRemoteTag(ctx, root, remote, name); err != nil {
+				return "", err
+			}
+			return "Deleted " + name + " on " + remote, nil
+		})
+	case "git-remove-worktree":
+		s.runGitOp("Remove Worktree", func(ctx context.Context, root string) (string, error) {
+			if err := s.git.runner.RemoveWorktree(ctx, root, target); err != nil {
+				return "", err
+			}
+			return "Removed worktree " + filepath.Base(target), nil
+		})
+	case "git-stash-clear":
+		s.runGitOp("Drop All Stashes", func(ctx context.Context, root string) (string, error) {
+			if err := s.git.runner.StashClear(ctx, root); err != nil {
+				return "", err
+			}
+			return "Dropped all stashes", nil
+		})
+	case "git-remove-submodule":
+		s.runGitOp("Remove Submodule", func(ctx context.Context, root string) (string, error) {
+			if err := s.git.runner.RemoveSubmodule(ctx, root, target); err != nil {
+				return "", err
+			}
+			return "Removed submodule " + target + " — Commit to record it", nil
+		})
+	case "git-delete-tag":
+		s.runGitOp("Delete Tag", func(ctx context.Context, root string) (string, error) {
+			if err := s.git.runner.DeleteTag(ctx, root, target); err != nil {
+				return "", err
+			}
+			return "Deleted tag " + target, nil
+		})
+	}
+}
+
+// amendPrefill loads HEAD's message into the Commit surface for an amend.
+func (s *Shell) amendPrefill() {
+	if s.git == nil || s.git.root == "" {
+		return
+	}
+	root := s.git.root
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), gitworkbench.ReadTimeout)
+		defer cancel()
+		subject, body, err := s.git.runner.LastCommitMessage(ctx, root)
+		s.applyOnUI(func() {
+			if err != nil || s.git == nil || s.git.root != root {
+				return
+			}
+			if strings.TrimSpace(s.surface.commit.Subject) == "" {
+				s.surface.commit.Subject = subject
+			}
+			if strings.TrimSpace(s.surface.commit.Body) == "" {
+				s.surface.commit.Body = body
+			}
+		})
+	}()
+}
+
+// pluralFiles writes "1 file" / "N files": the one way a file count is spelled.
+func pluralFiles(n int) string { return itoa(n) + " file" + pluralS(n) }
+
+// splitTrackedUntracked sorts paths by their snapshot status: untracked
+// files delete from disk, tracked ones restore from HEAD.
+func (s *Shell) splitTrackedUntracked(paths []string) (tracked, untracked []string) {
+	for _, p := range paths {
+		if cf, ok := s.selectedChangeFileInfo(p); ok && cf.Untracked {
+			untracked = append(untracked, p)
+		} else {
+			tracked = append(tracked, p)
+		}
+	}
+	return tracked, untracked
+}
+
+func joinPathsTarget(paths []string) string { return strings.Join(paths, "\x00") }
+
+func splitPathsTarget(target string) []string {
+	return strings.Split(target, "\x00")
+}
+
+type errGitOp string
+
+func (e errGitOp) Error() string { return string(e) }

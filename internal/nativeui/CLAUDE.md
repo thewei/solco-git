@@ -1,0 +1,54 @@
+# nativeui/
+> L2 | 父级: ../../CLAUDE.md
+
+Solco Git 的全部呈现层；每个文件开头的 L3 头（`[INPUT]/[OUTPUT]/[POS]`，或首段说明）是该文件的完整说明，这里只按职责分组、一行一组。Git 与 Files 的数据读取与变更全部走 `solco-gitkit`，这里不跑第二条 `git` 路径，也没有 Herdr/Pane/终端（「工作区」只是本应用自己的仓库清单）。
+
+成员清单（按职责分组）
+
+窗口与工作区（Solco Git 自己的，Solco 里没有；「工作区」是本应用自己的仓库清单，与 Herdr 的 workspace 无关）
+- `window.go`：Window 状态机——工作区清单（同一仓库根只有一个）、移除确认（`removeAsk`）、偏好与最近列表、待处理链接队列、设置落盘与广播；每一种打开方式（⌘O、Quick Launch、拖放、`solcogit://` 链接、`open -a`、Recent、worktree）都收敛到 `OpenRepository`：新的就加入清单，并显示。
+- `window_workspaces.go`：工作区清单的视图——侧栏页脚的工作区芯片（Solco 页脚设备芯片的样子，始终是当前工作区；点开向上弹出带搜索、有最大高度、超出滚动的列表，↵ 切换并刷新；侧栏收起时同一个下拉改在标题带里，两颗芯片只有一颗画下拉）、`workspaceLabels`（同名加父目录）、设置里的工作区管理（↑↓ 排序、移除、Add Workspace…）、移除有草稿或在跑操作的工作区前的确认。
+- `window_nav.go`：Back / Forward——（工作区，视图）位置的历史栈（`navHistory`，每帧由 `Window.View` 记录，所以每条导航路径都进历史；上限 64、移除工作区时折掉它的位置、不落盘），侧栏带右缘的 Back/Forward 一对（Solco 同位同形，无处可去时是禁用脸；侧栏收起后落在侧栏钮旁）与 View 菜单的 ⌘[ / ⌘]；Commit 编辑器未收起时和其他导航一样被拦住。
+- `window_view.go`：窗口的单一帧入口：标题带（分支 + 工具；侧栏收起时才多出工作区下拉）+ 活动工作区的工作台；侧栏宽度属于窗口；侧栏钮与 Back/Forward 两组悬浮钮。
+- `window_menu.go`：菜单栏（File / Repository / View / Window）的单一来源，只调已有方法；⌃⇥ / ⌃⇧⇥ 是 Window 菜单的可见项（AppKit 不把 Control-Tab 交给视图，Hidden 项的键位也不触发）。
+- `window_dialogs.go`：不属于任何仓库的浮层（设置、移除工作区确认）。
+- `welcome.go`：零工作区页：复用资源包嵌入的应用图标，显示 Open Repository…（⌘O）、最近列表与拖入提示。
+- `quick_launch.go`：⇧⌘O，已开工作区与最近仓库的筛选列表（工作区下拉复用它的行与匹配）。
+- `external_open.go`：`solcogit://open?repo=&view=&file=` 与 `open -a` 的唯一入口（解析、校验、不记日志）。
+- `shortcuts.go`：键位单一来源——菜单里列出的键就是绑定的键（⌘B 是唯一的窗口内快捷键，其余都是菜单加速键）。
+- `shell.go` / `shell_tab.go`：一个工作区 = 一个 Shell（Git + Files 所需的那部分状态）及其作为窗口成员的生命周期接缝；`view.go` 是工作区内的三个视图（Changes / Commits / Files），没有页面栈。
+- `frame.go`：三栏版面（侧栏｜标题带｜舞台）落点，侧栏主体按视图加 key；`viewTabs` 是直接铺在侧栏材质上的页签条（2026-11-08 第八轮）：三个页签都有图形，选中的是一层侧栏选中色、图标加名称并吃掉剩余宽度，其余是 28 点的图标方块（名字在提示与无障碍名里）；各页签从自身内容宽度（`viewTabBases` / `viewTabNeed`）起，Changes 的计数不被挤成省略号，放不下时丢闲置计数；侧栏页脚 `sidebarFoot` = 工作区芯片 + Settings（原来的 "Fetched … ago" 搬进 Fetch 钮的提示 `fetchTip`）。
+- `boundary.go`：从 Solco 复制来的代码原本跨出去调用的几个小边界，在这里用本应用的语义落地。
+
+Git（复制自 Solco，随 `solco-gitkit` 演进）
+- `git_service*.go`：Shell 一侧对 `gitworkbench` 的编排——快照缓存与后台刷新、提交事务、变更操作。
+- `git_*.go`、`gd_*.go`、`surface.go`、`commit_surface.go`、`changes_panel.go`、`sidebar*.go`：Changes / Commits 的评审面（diff 行、行级暂存、图谱、ref 树、Stash/Reflog/补丁对话框、sequencer 状态条）。
+- `commit_tree.go`：Fork 的 File Tree——提交评审里 Diff | Tree 切换，按提交看整棵树（读 `ListTree`/`ReadBlob`，只读）。
+- `multi_push.go`：Push Multiple…——一次推多个分支与标签（`ReadPushOffer`/`PushMany`），分叉的标为受阻，永不强推。
+- `image_compare.go`：图片改动的 2-up / Swipe / Onion 对比，画在已解码位图上。
+
+Files
+- `page_files.go`、`right_panel*.go`、`files_*.go`：Files 视图——忽略感知的树、原生预览分级（2026-11-08「Files preview: native first」，与 Solco 同一份：`files_markdown.go` 的 `planPreviewTier` 把文本/代码/SVG 源码交 `ui/editor`、≤ 256 KiB 的 Markdown 交 MyGo `ui/markdown`（Rendered | Source 一键切换，默认 Rendered）、PNG/JPEG/GIF/WebP/BMP 原生解码；只有 AVIF/ICO 经 `files_webview.go` 里 Go 现拼的几百字节页面，底色 `filesWebviewFill` = 窗口画布）、起始页、搜索、文件操作。
+- `files_git.go`：Files 比 Solco 多出的 Git 层——Changed | All、M/U 标记与文件夹点、槽边改动条（对照 HEAD）、Plain | Blame、History、底栏图例；全部读自 git 快照/blame/cat-file。
+
+UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差异）
+- `theme.go`、`design_system.go`、`ds_components.go`、`components.go`、`controls.go`、`gorex_style.go`、`icons.go`、`tooltip.go`、`motion.go`、`constants.go`、`list_nav.go`、`dialogs.go`、`code_theme.go`、`chrome_parts.go`、`script_actions.go`、`workbench_ui.go`、`page_common.go`、`page_settings.go`：token、控件、图标、提示、动效、列表键盘导航、设置页等共享部件。改视觉先改 token 或共享默认，不在业务组件上 inline 覆盖。侧栏没有自己的底色（vibrancy 透出来），放在它上面的控件（视图页签、Files 的 Changed | All、搜索的 Files | Content）一律用 `ds_components.go` 的 `materialFace` 一族——选中是侧栏选中色的一层淡墨、悬停是侧栏悬停色，不是 `segmentedTrack` 那种不透明的白槽；`segmentedTrack` 只留给画布上的控件。
+
+测试（无原生窗口，直接驱动 Window/Shell 模型；后台结果进队列，由测试线程排空）
+- `testutil_test.go`：共享夹具（真实临时仓库 `gitFixture`、`newTestWindow`、`uiPump`、`settle`、`saveEvidence`）。
+- `window_nav_test.go`：Back/Forward 的合同——历史栈（记录、去重、回退后新去处丢前方、上限、移除工作区折叠）、跨工作区与视图往返且不自己再写历史、Commit 编辑器拦住、按钮真点、位置（侧栏带右缘 → 收起后落在侧栏钮旁，内容让位）、View 菜单随历史启停。
+- `window_foot_test.go`：页脚工作区芯片在侧栏最下方并向上弹出、收起时才在标题带里、侧栏滑动的几帧里只有一颗芯片画下拉（否则同一滚动状态绑两次会崩）、Fetch 钮提示带 "Fetched … ago"。
+- `window_test.go`：工作区/最近/外部链接（含 view=changes 带文件时在 Changes 里选中）/Quick Launch/设置规范化的回归；首帧的分支芯片不说 Detached HEAD；Theme 偏好映射到框架的 theme source。
+- `files_markdown_test.go`：预览原生优先合同——每种文件的分级归属、Markdown 渲染⇄源码切换且不重读（Source 仍带对 HEAD 的槽边）、搜索命中落在 Source、链接只放行该放行的、图片只读仓库里且有像素预算、主题随外观只换一次、AVIF/ICO 整页只有几百字节且底色 = 窗口画布、设置里没有旧的 Rich file preview 开关；设置 SOLCOGIT_EVIDENCE 时落下 Markdown 渲染的 PNG；各条都做过变异检查。
+- `log_privacy_test.go`：日志合同——打开仓库、跑一次 Git 操作、收到一条被拒的链接后，默认级别的日志有操作名与工作区数，没有仓库路径/目录名/文件名/链接参数（抓取本身也被断言）。
+- `quick_commit_test.go`：空闲提交条上第一次点击 Commit 就打开提交对话框（按钮 KeepFocus；去掉则红：按下展开表单、按钮换了父级，松手落空）。
+- `staged_pane_test.go`：Staged 列表的高度——分隔条真的改它（旧的 Height 被 Grow 的 0% basis 吞掉，两个列表等分）、一个暂存文件不把 Unstaged 行挤到 Staged 头后面。
+- `view_tabs_test.go`：侧栏页签条的合同——Changes 的三位数计数整段可见（旧的等分行为红）；只有选中的页签画名称、其余只有图标，条在 200/252/400 三种侧栏宽度下不出槽、不重叠、等高；放不下闲置计数时才丢它；选中是一层淡墨而不是白纸（明暗两种外观，变异成"画纸/带槽/闲置也画名字"各自变红已核对），Files 树的 Changed | All 与搜索的 Files | Content 同样；点、方向键、悬停淡墨与提示（名称 + 计数 + ⌘1–3）。
+- `window_menu_test.go`：应用菜单合同——About 之后才是 Check for Updates…（main 接上更新器才有，每次重装菜单拿新菜单项），Settings… 与 Quit 不丢。
+- `window_workspaces_test.go`：工作区下拉与管理的合同——chip 始终是当前工作区；搜索（过滤、↑↓、↵ 切换并刷新、无命中时 ↵ 什么也不做）、最大高度与滚动、行右键移除、设置里的排序/移除/Add Workspace…（添加不抢前台）、每一种打开方式都加入清单、旧版 `tabs` 键读成工作区、清单上限、共享图标按钮是 Tab 停靠点。
+- `window_landing_test.go`：冷启动经链接落点——首读之后列表顶上是被点名文件的卡，内容分批读到后也不动，过了揭示窗口选中行仍是它。
+- `window_polish_test.go`：首读之前侧栏说 Reading references… 而不是五个 0；外部改动直接读到、没有「Files changed on disk」提示；窄卡不画 Viewed 框；提交计数按单复数（1 commit）；欢迎页的两句话各占一行。
+- `window_render_test.go`、`files_evidence_test.go`：与设计稿逐屏对照的 PNG 证据（设置 `SOLCOGIT_EVIDENCE` 才落盘）。
+- `files_git_test.go`、`commit_tree_test.go`、`multi_push_test.go`、`image_compare_test.go`：2026-11-07「Solco Git」决定里 Files 一节、按提交看整棵树、多引用推送、图片对比的回归防线。
+
+[PROTOCOL]: 变更时更新此头部，然后检查 ../../CLAUDE.md

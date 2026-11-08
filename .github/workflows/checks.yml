@@ -1,0 +1,42 @@
+name: checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+      # No updater key here: an unsigned build is enough to prove the bundle.
+      - name: Build app bundle
+        run: go tool mygo build
+
+      - name: Verify app bundle
+        run: |
+          APP="build/darwin-arm64/Solco Git.app"
+          test -x "$APP/Contents/MacOS/Solco Git"
+          plutil -lint "$APP/Contents/Info.plist"
+          # The one-way link from Solco needs the scheme declared.
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleURLTypes:0:CFBundleURLSchemes:0' "$APP/Contents/Info.plist" | grep -qx solcogit
+          codesign --verify --deep --strict "$APP"

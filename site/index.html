@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Solco Git — A native Git client that also reads source</title>
+  <meta name="description" content="Solco Git is a native macOS Git client with a Files viewer: stage by line, walk the commit graph, read a file with its blame. One window, one workspace per repository.">
+  <meta property="og:title" content="Solco Git — A native Git client that also reads source">
+  <meta property="og:description" content="Changes, Commits and Files in one calm native window. Uses only the git you already have.">
+  <meta property="og:image" content="./assets/appicon/solco-git-512.png">
+  <link rel="icon" type="image/png" href="./assets/appicon/favicon-128.png">
+  <link rel="apple-touch-icon" href="./assets/appicon/solco-git-192.png">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="sg">
+  <div class="wrap"><nav class="nav">
+    <a class="brand" href="#features"><img src="./assets/appicon/solco-git-128.png" alt="">Solco Git</a>
+    <div class="links"><a href="#features">Features</a><a href="#changes">Changes</a><a href="#commits">Commits</a><a href="#files">Files</a><a href="#small">Scope</a></div>
+    <div class="right"><a href="https://github.com/thewei/solco-git">GitHub</a><a class="pill" href="#download">Download</a></div>
+  </nav></div>
+  <header class="hero wrap"><div>
+    <h1>Git, and the source<br><span>behind every change.</span></h1>
+    <p class="sub">Solco Git is a native macOS Git client with a Files viewer. <b>Review, stage and commit; then read the code that changed.</b> One window, one workspace per repository.</p>
+    <div class="cta"><a class="pill" data-dl href="https://github.com/thewei/solco-git/releases/latest">Download for Mac</a><span class="latest" data-latest></span><a href="#features">See what it does →</a></div>
+    <img class="ram" src="./assets/appicon/solco-git-512.png" alt="">
+  </div></header>
+  <section class="statement wrap"><p>Native speed. Plain <code>git</code>. <span>No account, no cloud, no telemetry: it reads and changes your repositories through the Git you already have, and nothing else.</span></p></section>
+  <section id="features" class="herd wrap"><div class="herd-head"><h2>From a dirty tree<br><span>to a clean commit.</span></h2><p>Stage a file, a hunk or a single line. Check the diff beside the list. Commit without leaving the window.</p></div>
+    <div class="scene"><img src="./assets/screens/product-hero.webp" alt="Solco Git showing unstaged and staged files with their diffs."></div>
+    <div class="notes">
+      <div class="note"><b>Review</b><code>Changes</code><span>Staged and unstaged lists, unified or split diff, Viewed marks, stash, patches and conflict resolution.</span></div>
+      <div class="note"><b>Understand</b><code>Commits</code><span>A decorated commit graph, a ref sidebar, and any commit as a diff or as its whole tree.</span></div>
+      <div class="note"><b>Read</b><code>Files</code><span>An ignore-aware tree, a syntax-colored code view, change bars, Blame and per-file History.</span></div>
+    </div>
+  </section>
+  <div class="doc wrap">
+    <aside class="toc"><div class="file">README.md</div><a class="on" href="#changes"><span>01</span>Changes</a><a href="#commits"><span>02</span>Commits</a><a href="#files"><span>03</span>Files</a><a href="#small"><span>04</span>On purpose</a></aside>
+    <article class="md">
+      <section id="changes"><h3><i>01</i>Stage exactly what you mean</h3><p>The Changes view lists what is staged and what is not, with the diff next to it. <b>Stage or unstage a whole file, a hunk or single lines</b>, discard what you do not want, then commit or amend. Rebase, merge, cherry-pick and revert states are shown and resolved in place; conflicts open as a three-way resolution.</p></section>
+      <section id="commits"><h3><i>02</i>A history you can walk</h3><p>The commit graph carries branch, tag and stash decorations, with the ref sidebar (branches, remotes, tags, stashes, worktrees, submodules) beside it. Open any commit as <b>Diff or Tree</b> to see just what changed, or the whole project as it stood. Fetch, pull (fast-forward, merge or rebase) and push; <code>Push Multiple…</code> sends several branches and tags at once, never forced.</p><figure class="shot"><img src="./assets/screens/feature-commits.webp" alt="The commit graph with the selected commit's diff below."></figure></section>
+      <section id="files"><h3><i>03</i>Read it like a code editor</h3><p>Files is a read-first view of the working tree: a tree you can filter to <b>Changed</b>, M and U marks, change bars in the gutter, <b>Plain | Blame</b> and the file's own History. Images compare 2-up, swipe or onion skin. New, rename and delete are there when you need them.</p><figure class="shot"><img src="./assets/screens/feature-files.webp" alt="A source file with change bars and Blame and History controls."></figure></section>
+      <section id="small"><h3><i>04</i>Small on purpose</h3><p>Solco Git <b>only runs <code>git</code></b>. It never force-pushes, never runs <code>git clean</code>, never fetches behind your back (Fetch and the optional auto-fetch interval are the only network calls), and keeps no credentials, commit messages or file contents in its settings or logs. There is no Clone, no pull-request or account integration, and no AI.</p><pre class="pre"><span class="d"># the boundary is simple</span>
+Solco Git  → a window onto repositories you already have
+git        → every read and every change
+(nothing else: no accounts, no cloud, no telemetry)</pre></section>
+    </article>
+  </div>
+  <section id="download" class="end wrap"><h2>One install.<br><span>Updates arrive signed.</span></h2>
+    <div class="recommend">
+      <div class="recommend-copy">
+        <small data-recommended-platform>macOS 13 or later</small>
+        <b data-recommended-title>Solco Git</b>
+        <span data-recommended-detail>Apple Silicon and Intel builds. Install once, then update from the app menu.</span>
+      </div>
+      <a class="pill" data-release-download data-download-id="darwin-arm64-dmg" href="https://github.com/thewei/solco-git/releases/latest">Download DMG</a>
+    </div>
+    <div class="downloads-head"><h3>All downloads</h3><a href="https://github.com/thewei/solco-git/releases/latest">Browse the complete release →</a></div>
+    <div class="downloads one">
+      <div class="platform-group">
+        <header><b>macOS</b><span>DMG install · portable archive</span></header>
+        <a data-download-id="darwin-arm64-dmg" href="https://github.com/thewei/solco-git/releases/latest" download><i>DMG</i><span>Apple Silicon</span><em></em></a>
+        <a data-download-id="darwin-amd64-dmg" href="https://github.com/thewei/solco-git/releases/latest" download><i>DMG</i><span>Intel</span><em></em></a>
+        <a data-download-id="darwin-arm64-archive" href="https://github.com/thewei/solco-git/releases/latest" download><i>Archive</i><span>Apple Silicon</span><em></em></a>
+        <a data-download-id="darwin-amd64-archive" href="https://github.com/thewei/solco-git/releases/latest" download><i>Archive</i><span>Intel</span><em></em></a>
+      </div>
+    </div>
+    <p class="download-note">Release builds use the MyGo signed updater: the app checks this repository's releases once a day and installs only updates signed with the project's key. Builds are signed ad hoc, not notarized: the first time, open the app with right-click → Open.</p>
+  </section>
+  <footer class="foot wrap"><div class="me"><div class="top"><img src="./assets/appicon/solco-git-128.png" alt=""><b>Solco Git</b></div><span>Git, and the source behind every change.</span><span>Free and open source, MIT.</span></div><div><h4>Product</h4><a href="#features">Features</a><a href="#download">Download</a></div><div><h4>Learn</h4><a href="#changes">Changes</a><a href="#small">Scope</a></div><div><h4>Community</h4><a href="https://github.com/thewei/solco-git">GitHub</a><a href="https://github.com/thewei/solco">Solco</a></div></footer>
+  </div>
+  <script>
+    const REPO = "thewei/solco-git";
+    // Asset names carry the version, so they are matched, never hardcoded.
+    const downloadCatalog = [
+      { id: "darwin-arm64-dmg", chip: "Apple Silicon", title: "DMG", test: a => /arm64\.dmg$/.test(a.name) },
+      { id: "darwin-amd64-dmg", chip: "Intel", title: "DMG", test: a => /(amd64|x86_64)\.dmg$/.test(a.name) },
+      { id: "darwin-arm64-archive", chip: "Apple Silicon", title: "Archive", test: a => /darwin-arm64.*\.(tar\.gz|zip)$/.test(a.name) },
+      { id: "darwin-amd64-archive", chip: "Intel", title: "Archive", test: a => /darwin-(amd64|x86_64).*\.(tar\.gz|zip)$/.test(a.name) }
+    ];
+    const sizeOf = bytes => bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+    const isArm = async () => {
+      try {
+        const d = navigator.userAgentData && await navigator.userAgentData.getHighEntropyValues(["architecture"]);
+        if (d && d.architecture === "x86") return false;
+      } catch {}
+      return true; // Safari hides the architecture; Apple Silicon is the common Mac
+    };
+    const assetFor = (release, id) => (release.assets || []).find(downloadCatalog.find(e => e.id === id).test);
+    const paint = async release => {
+      const version = String(release.tag_name || "").replace(/^v/, "");
+      for (const item of downloadCatalog) {
+        const asset = assetFor(release, item.id);
+        if (!asset) continue;
+        document.querySelectorAll(`[data-download-id="${item.id}"]`).forEach(link => {
+          link.href = asset.browser_download_url;
+          const size = link.querySelector("em");
+          if (size) size.textContent = sizeOf(asset.size);
+        });
+      }
+      const id = (await isArm()) ? "darwin-arm64-dmg" : "darwin-amd64-dmg";
+      const pick = assetFor(release, id);
+      const item = downloadCatalog.find(e => e.id === id);
+      if (pick) {
+        document.querySelectorAll("[data-dl], [data-release-download]").forEach(a => { a.href = pick.browser_download_url; });
+        document.querySelectorAll("[data-recommended-platform]").forEach(n => { n.textContent = `Recommended for macOS · ${item.chip}`; });
+        document.querySelectorAll("[data-recommended-title]").forEach(n => { n.textContent = `Solco Git ${version}`; });
+        document.querySelectorAll("[data-recommended-detail]").forEach(n => { n.textContent = `${item.title} · ${sizeOf(pick.size)} · install once and receive signed updates in-app.`; });
+      }
+      document.querySelectorAll("[data-latest]").forEach(el => {
+        const a = document.createElement("a");
+        a.href = release.html_url || `https://github.com/${REPO}/releases`;
+        a.textContent = "v" + version;
+        el.textContent = "";
+        el.appendChild(a);
+      });
+    };
+    // Latest release, cached 1 h; on any failure the page keeps its releases/latest links.
+    (async () => {
+      const KEY = "solco-git-latest", TTL = 36e5;
+      let rel = null;
+      try { const c = JSON.parse(localStorage.getItem(KEY) || "null"); if (c && Date.now() - c.t < TTL) rel = c.r; } catch {}
+      if (!rel) {
+        try {
+          const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { Accept: "application/vnd.github+json" } });
+          if (res.ok) { rel = await res.json(); try { localStorage.setItem(KEY, JSON.stringify({ r: rel, t: Date.now() })); } catch {} }
+        } catch {}
+      }
+      if (rel) await paint(rel);
+    })();
+  </script>
+</body>
+</html>
