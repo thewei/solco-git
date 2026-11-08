@@ -13,7 +13,7 @@ internal/applog/ - size-bounded structured logging (2 MiB active + 3 backups) an
 scripts/ - kit-parity.sh: how far the UI kit has drifted from the sibling `../solco` (local only)
 resources/ - the 1024 × 1024 app icon used by MyGo packaging and embedded in the welcome page
 site/ - the GitHub Pages landing site (static HTML/CSS, no build step; https://thewei.github.io/solco-git/)
-docs/ - releasing.md: the updater key/secret setup (done) and the routine tag-and-publish steps
+docs/ - [private: link into ../solco-docs] releasing.md: the updater key/secret setup (done) and the routine tag-and-publish steps
 .github/workflows/ - checks.yml (vet + test + unsigned build + bundle structure on macOS), release.yml (tag → draft release with signed update manifests; stops early when the updater key is not set up) and pages.yml (deploys site/)
 </directory>
 
@@ -27,5 +27,7 @@ mygo.config.ts - app name/identifier/version, the `solcogit` URL scheme, icon, m
 Product rule: **Solco Git is a Git client and Files viewer, not a workspace.** It owns native presentation, its own preferences and window state. Git truth stays in the repository and in `solco-gitkit`; there is no Workspace, Pane, terminal, agent, Herdr, process lifecycle, account, cloud service or telemetry here, and nothing from the `solco` repository is imported.
 
 Implementation rule: do not hand-roll what a mature owner has. Search in order: `git` through `solco-gitkit` → MyGo native components/official plugins → a proven compatible implementation → custom code. A missing Git capability is added to `solco-gitkit` (with a real-repository test), never as a second way of running `git` here.
+
+Private-assets rule: **code, tests and the rules an agent obeys live here; the development record (the release runbook, Solco's decisions and designs, keys) lives in the private `../solco-docs`, linked in at the same paths.** Read through the link; write and commit there (`commit-docs.sh` of the `solco-docs` skill in the Solco repository), never copy it into this repository or its commit messages; every commit is authored as the user's GitHub identity. Details: `AGENTS.md` "Private assets (solco-docs)".
 
 [PROTOCOL]: 变更时更新此头部，然后检查子目录 CLAUDE.md

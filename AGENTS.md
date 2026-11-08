@@ -7,6 +7,16 @@
 3. The decision record: Solco's `docs/product-decisions.md`, "2026-11-07 · Solco Git and the right panel (T3 Code review, rounds 4 and 5)" (`rg -n 'Solco Git' ../solco/docs/product-decisions.md`). The design lives in Solco's `designs/git-files-app/`; a behaviour that differs from it is either a recorded limit (README) or a bug.
 4. `internal/nativeui/CLAUDE.md` before touching presentation.
 
+## Private assets (solco-docs)
+
+`docs/` (the release runbook) is a symlink into the **private** sibling repository `../solco-docs` (its `solco-git/` folder), and so are the Solco documents named above (`../solco/docs/`, `../solco/designs/`): the development record is not in this repository, and `.gitignore` keeps `docs/` out of every commit here. The updater key pair lives in solco-docs `secrets` and in the CI secret, never here. The rulebook is the `solco-docs` skill in the Solco repository (`../solco/.agents/skills/solco-docs/SKILL.md`); these rules apply to every session:
+
+- **Read.** A path that does not resolve means a missing link or checkout: `bash ../solco-docs/link.sh --check`, then `bash ../solco-docs/link.sh`. No `../solco-docs`: stop and tell the user; never recreate, stub or guess those files here.
+- **Write and commit.** The release runbook and the design record are written through the links and committed in solco-docs (`bash ../solco/.agents/skills/solco-docs/scripts/commit-docs.sh -m "…" -- docs/…`); code, tests and rules are a separate commit here (`bash ../solco/.agents/skills/solco-commit/scripts/commit-paths.sh`). Two repositories, two commits, never `git add -A`; also check `git -C ../solco-docs status --short`.
+- **Authorship.** Commit as the user's GitHub identity: both scripts set it, a hand-typed `git commit` passes it (the skill has name and address). Never a placeholder name, never the personal address from the global git config.
+- **No leak back.** Nothing private goes into this repository's files, commit messages or CI: document text, design contents or evidence, keys, LAN addresses, home paths. `go vet`, `go test` and CI pass on a clone without solco-docs.
+- **Publish.** Push only when asked, after the outbound scan and author check (`solco-commit`); solco-docs stays private, no force-push and no tag there. A release still follows `docs/releasing.md`.
+
 ## Checks
 
 ```sh
