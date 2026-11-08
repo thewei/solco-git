@@ -482,7 +482,7 @@ func (s *Shell) titleTools(c *ui.Context) {
 func (s *Shell) filesActionItems(m *ui.Menu) {
 	path := s.rightPanel.selectedFilePath
 	if path != "" {
-		s.filesPathItems(m, path)
+		s.filesPathItems(m, path, true)
 		m.Separator()
 	}
 	if m.Item("New File…").Chosen() {

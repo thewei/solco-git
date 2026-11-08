@@ -7,8 +7,17 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/thewei/solco-git/internal/platform"
 	"github.com/thewei/solco-gitkit/filesview"
 )
+
+// filesQuickLook opens macOS Quick Look on a file; a variable so a test can
+// watch it instead of launching the viewer.
+var filesQuickLook = func(path string) {
+	if err := platform.QuickLook(path); err != nil {
+		slog.Warn("quick look failed", "error", err)
+	}
+}
 
 // filesNewFile opens the shared text dialog to create a file in dir (the
 // tree root or a folder row's absolute path).
@@ -60,13 +69,18 @@ func (s *Shell) filesRowMenu(m *ui.Menu, e filesview.Entry) {
 		s.filesDelete(e.Path, isDir)
 	}
 	m.Separator()
-	s.filesPathItems(m, e.Path)
+	s.filesPathItems(m, e.Path, !e.IsDir && !e.TargetDir)
 }
 
-// filesPathItems are the read-only path helpers of one file or folder. The
-// tree row's right-click menu and the title bar's Actions menu (for the
-// file open in the preview) both show them from here.
-func (s *Shell) filesPathItems(m *ui.Menu, path string) {
+// filesPathItems are the read-only helpers of one file or folder: Quick Look
+// (a file has something to look at), Copy Path, Reveal in Finder. The tree
+// row's right-click menu, the title bar's Actions menu (for the file open in
+// the preview) and the right-click of the preview's body all show them from
+// here.
+func (s *Shell) filesPathItems(m *ui.Menu, path string, file bool) {
+	if file && m.Item("Quick Look").Chosen() {
+		filesQuickLook(path)
+	}
 	if m.Item("Copy Path").Chosen() {
 		s.copyToClipboard(path)
 	}

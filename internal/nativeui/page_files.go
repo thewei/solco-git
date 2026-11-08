@@ -35,7 +35,7 @@ func (s *Shell) filesPage(c *ui.Context) {
 
 // filesPreviewBody is the view the plan chose for the open file. The foot
 // (the gutter's legend, language and line count) belongs to the code view, so
-// formatted Markdown has none.
+// a formatted Markdown file and a drawn SVG have none.
 func (s *Shell) filesPreviewBody(c *ui.Context, selected string) {
 	st := &s.rightPanel
 	switch {
@@ -48,7 +48,7 @@ func (s *Shell) filesPreviewBody(c *ui.Context, selected string) {
 		})
 	default:
 		s.nativePreviewBody(c)
-		if st.nativeMarkdown == nil || st.markdownSource {
+		if (st.nativeMarkdown == nil && st.nativeSVG == nil) || st.previewSource {
 			s.filesPreviewFoot(c)
 		}
 	}

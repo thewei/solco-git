@@ -42,16 +42,16 @@ func (s *Shell) planFilePreview(path string) {
 	}()
 }
 
-// setMarkdownSource switches the sticky Rendered/Source choice. A small
+// setPreviewSource switches the sticky Rendered/Source choice. A small
 // Markdown file holds both views from one read, so the switch only changes
 // which one the body builds; a line a search hit asked for lands now if the
 // editor is the view the switch brought up.
-func (s *Shell) setMarkdownSource(source bool) {
+func (s *Shell) setPreviewSource(source bool) {
 	st := &s.rightPanel
-	if st.markdownSource == source {
+	if st.previewSource == source {
 		return
 	}
-	st.markdownSource = source
+	st.previewSource = source
 	s.applyFilesReveal()
 }
 
@@ -82,7 +82,7 @@ func (s *Shell) applyPreviewPlan(path, root string, size int64, flavor filesview
 	case tierImageTooLarge:
 		s.claimNativePreview(path)
 		st.nativeImageFailed = "This image is too large to preview. Reveal it in Finder to open it."
-	default: // tierText, tierMarkdown
+	default: // tierText, tierMarkdown, tierSVG
 		s.beginNativeText(path, flavor)
 	}
 }
@@ -99,6 +99,8 @@ func (s *Shell) claimNativePreview(path string) {
 	st.nativeText = nil
 	st.nativeCode = nil
 	st.nativeMarkdown = nil
+	st.nativeSVG = nil
+	st.previewNote = ""
 	st.nativeTextLoading = false
 	st.nativeTextFailed = ""
 	st.nativeImage = nil
@@ -107,9 +109,11 @@ func (s *Shell) claimNativePreview(path string) {
 }
 
 // beginNativeText loads a text file into the code view; a Markdown file
-// under markdownRenderCap also gets its formatted view from the same read.
-// The read and the editor Buffer (a rope, safe from any goroutine) build off
-// the UI lane; the State that shows it is made on it.
+// under markdownRenderCap also gets its formatted view, and an SVG under
+// svgRenderCap its drawing, from the same read. The read, the editor Buffer (a
+// rope, safe from any goroutine), the cut of a Markdown file into rows and the
+// parse of an SVG all happen off the UI lane; the State that shows it is made
+// on it.
 func (s *Shell) beginNativeText(path string, flavor filesview.Flavor) {
 	st := &s.rightPanel
 	s.claimNativePreview(path)
@@ -117,64 +121,86 @@ func (s *Shell) beginNativeText(path string, flavor filesview.Flavor) {
 	gen := st.filesGen.Load()
 	root := st.currentRoot
 	name := filepath.Base(path)
-	render := planPreviewTier(path, st.previewSize) == tierMarkdown
+	tier := planPreviewTier(path, st.previewSize)
 	// The gutter is drawn against the file's version in HEAD; what Git knows
 	// is read here, on the UI lane, and the blob itself in the background.
 	baseRel, baseNew, wantBase := s.diffBasePlan(path)
 	runner := s.git.runner
 	gitRoot := s.git.root
-	load := func() (filesview.Preview, *editor.Buffer, *editor.Buffer, error) {
+	type loaded struct {
+		preview filesview.Preview
+		buf     *editor.Buffer
+		base    *editor.Buffer
+		md      *markdownPreview
+		svg     *ui.SVG
+		note    string // why a file with a second view has only the source
+		err     error
+	}
+	load := func() loaded {
 		preview, err := filesview.ReadText(path, root)
 		if err != nil || preview.IsBinary {
-			return preview, nil, nil, err
+			return loaded{preview: preview, err: err}
 		}
-		buf := editor.NewBuffer(preview.Content)
-		buf.SetLanguage(editor.LanguageFor(name))
-		if !render {
-			preview.Content = "" // the Buffer holds the text now
+		l := loaded{buf: editor.NewBuffer(preview.Content)}
+		l.buf.SetLanguage(editor.LanguageFor(name))
+		if !preview.Truncated {
+			switch tier {
+			case tierMarkdown:
+				if l.md = newMarkdownPreview(path, root, preview.Content, s.revealFile); l.md == nil {
+					l.note = "Too complex to format, showing the source"
+				}
+			case tierSVG:
+				var err error
+				if l.svg, err = ui.ParseSVG([]byte(preview.Content)); err != nil {
+					l.svg, l.note = nil, "Can't draw this SVG, showing the source"
+				}
+			}
 		}
-		var base *editor.Buffer
+		preview.Content = "" // the Buffer (and the formatted view) hold the text now
+		l.preview = preview
 		if wantBase {
-			base = readDiffBase(runner, gitRoot, baseRel, baseNew)
+			l.base = readDiffBase(runner, gitRoot, baseRel, baseNew)
 		}
-		return preview, buf, base, nil
+		return l
 	}
-	apply := func(preview filesview.Preview, buf, base *editor.Buffer, err error) {
+	apply := func(l loaded) {
 		if gen != st.filesGen.Load() || st.currentRoot != root || st.selectedFilePath != path {
 			return
 		}
 		st.nativeTextLoading = false
-		if err != nil {
-			st.nativeTextFailed = err.Error()
+		if l.err != nil {
+			st.nativeTextFailed = l.err.Error()
 			return
 		}
+		preview := l.preview
 		st.nativeText = &preview
-		if render && buf != nil && !preview.Truncated {
-			st.nativeMarkdown = newMarkdownPreview(path, root, preview.Content, s.revealFile)
-			preview.Content = "" // the formatted view holds the text now
-		}
-		if buf != nil {
+		st.nativeMarkdown, st.nativeSVG, st.previewNote = l.md, l.svg, l.note
+		if l.buf != nil {
 			st.nativeCode = &editor.State{
-				Buffer:       buf,
+				Buffer:       l.buf,
 				ReadOnly:     true,
 				NoActiveLine: true, // a viewer has no line being worked on
 				Label:        name,
 				Placeholder:  "Empty file",
-				DiffBase:     base,
+				DiffBase:     l.base,
 				// Prose wraps; code scrolls sideways.
-				SoftWrap: flavor == filesview.FlavorMarkdown || buf.Language() == nil,
+				SoftWrap: flavor == filesview.FlavorMarkdown || l.buf.Language() == nil,
+				// After the editor's own Copy / Select All.
+				ContextMenu: func(m *ui.Menu) {
+					m.Separator()
+					s.filesPathItems(m, path, true)
+				},
 			}
 		}
 		s.applyFilesReveal()
 	}
 	if s.win == nil {
-		preview, buf, base, err := load()
-		apply(preview, buf, base, err)
+		apply(load())
 		return
 	}
 	go func() {
-		preview, buf, base, err := load()
-		s.applyOnWindow(func() { apply(preview, buf, base, err) })
+		l := load()
+		s.applyOnWindow(func() { apply(l) })
 	}()
 }
 
@@ -218,7 +244,7 @@ func (s *Shell) beginNativeImage(path string) {
 
 // clearNativeFilesPreview drops the per-selection preview state (selection
 // change, root change, removal of the selected file); the sticky
-// markdownSource choice stays.
+// previewSource choice stays.
 func (s *Shell) clearNativeFilesPreview() {
 	st := &s.rightPanel
 	st.previewSize = 0
@@ -227,8 +253,9 @@ func (s *Shell) clearNativeFilesPreview() {
 }
 
 // filesPreviewBar is the open file's strip over every tier: name, size,
-// the limit that cut it, and the Rendered/Source choice of a Markdown file
-// small enough to format.
+// the limit that cut it, why a file has only its source, and the
+// Rendered|Image / Source choice of a Markdown file or SVG small enough to
+// show as one.
 func (s *Shell) filesPreviewBar(c *ui.Context, selected string) {
 	st := &s.rightPanel
 	t := c.Theme()
@@ -255,6 +282,9 @@ func (s *Shell) filesPreviewBar(c *ui.Context, selected string) {
 		if st.nativeText != nil && st.nativeText.Truncated {
 			statusPill(c, "Showing the first "+filesview.FormatFileSize(filesview.TextPreviewCap), ToneAttention)
 		}
+		if st.previewNote != "" {
+			statusPill(c, st.previewNote, ToneAttention)
+		}
 		if isHTMLPage(selected) {
 			s.syncStaticPreview()
 			k := gorexColorsOf(t.Dark)
@@ -265,13 +295,22 @@ func (s *Shell) filesPreviewBar(c *ui.Context, selected string) {
 				s.openStaticPreview(selected)
 			}
 		}
-		if st.previewPlanned == selected && planPreviewTier(selected, st.previewSize) == tierMarkdown {
-			choice := 0
-			if st.markdownSource {
-				choice = 1
+		if st.previewPlanned == selected {
+			rendered, label := "", ""
+			switch {
+			case st.nativeMarkdown != nil:
+				rendered, label = "Rendered", "Markdown view"
+			case st.nativeSVG != nil:
+				rendered, label = "Image", "SVG view"
 			}
-			if segmentedControl(c, &choice, "Rendered", "Source").Label("Markdown view").Changed() {
-				s.setMarkdownSource(choice == 1)
+			if rendered != "" {
+				choice := 0
+				if st.previewSource {
+					choice = 1
+				}
+				if segmentedControl(c, &choice, rendered, "Source").Label(label).Changed() {
+					s.setPreviewSource(choice == 1)
+				}
 			}
 		}
 		s.filesGitControls(c, selected)
@@ -284,9 +323,16 @@ func (s *Shell) filesPreviewBar(c *ui.Context, selected string) {
 // webviewBackground is.
 func filesWebviewFill() string { return webviewBackground }
 
+// previewFileMenu is the right-click menu of an image's or drawing's body: the
+// helpers of the open file (the code and Markdown views add them to their own
+// menus).
+func (s *Shell) previewFileMenu(m *ui.Menu) {
+	s.filesPathItems(m, s.rightPanel.nativePreviewPath, true)
+}
+
 // nativePreviewBody renders what the plan chose for the center: the formatted
-// Markdown, the code view, the decoded image, the AVIF/ICO page, or the
-// truthful state.
+// Markdown, the code view, the decoded image, the SVG drawing, the AVIF/ICO
+// page, or the truthful state.
 func (s *Shell) nativePreviewBody(c *ui.Context) {
 	st := &s.rightPanel
 	switch {
@@ -299,15 +345,20 @@ func (s *Shell) nativePreviewBody(c *ui.Context) {
 	case st.nativeTextFailed != "":
 		emptyState(c, "Can't read this file", st.nativeTextFailed)
 	case st.nativeImage != nil:
-		ui.Box(c).Grow(1).FillWidth().Padding(Spacing().L).Children(func() {
+		ui.Box(c).Grow(1).FillWidth().Padding(Spacing().L).ContextMenu(s.previewFileMenu).Children(func() {
 			ui.Image(c, st.nativeImage).Fit(ui.ScaleDown).Grow(1).FillWidth()
 		})
 	case st.webImage:
 		s.filesWebviewBody(c)
 	case st.nativeText != nil && st.nativeText.IsBinary:
 		emptyState(c, "Binary file", "Reveal it in Finder to open it.")
-	case st.nativeMarkdown != nil && !st.markdownSource:
+	case st.nativeMarkdown != nil && !st.previewSource:
 		s.markdownBody(c, st.nativeMarkdown)
+	case st.nativeSVG != nil && !st.previewSource:
+		// A drawing is sharp at any size: it fills the area, up or down.
+		ui.Box(c).Grow(1).FillWidth().Padding(Spacing().L).ContextMenu(s.previewFileMenu).Children(func() {
+			ui.Image(c, st.nativeSVG).Fit(ui.Contain).Grow(1).FillWidth()
+		})
 	case st.nativeCode != nil:
 		// The theme follows the window each frame: an appearance change
 		// repaints an open file without reloading it.

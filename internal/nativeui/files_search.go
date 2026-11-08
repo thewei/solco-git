@@ -248,17 +248,17 @@ func (s *Shell) openFileHit(abs string, m filesview.ContentMatch) {
 }
 
 // openFileAt opens path with the code view showing line (from 0) and
-// selecting length bytes from byte column col. Markdown opens as source, the
-// only form with lines to point at.
+// selecting length bytes from byte column col. Markdown and SVG open as
+// source, the only form with lines to point at.
 func (s *Shell) openFileAt(path string, line, col, length int) {
 	st := &s.rightPanel
 	st.reveal = &filesReveal{path: path, line: line, col: col, length: length}
-	if filesview.PreviewFlavor(path) == filesview.FlavorMarkdown && !st.markdownSource {
+	if hasRenderedView(path) && !st.previewSource {
 		if st.selectedFilePath == path {
-			s.setMarkdownSource(true) // flips to the editor and lands the reveal on its text
+			s.setPreviewSource(true) // flips to the editor and lands the reveal on its text
 			return
 		}
-		st.markdownSource = true
+		st.previewSource = true
 	}
 	if st.selectedFilePath == path {
 		s.applyFilesReveal() // already showing, or the text lands and applies it

@@ -83,7 +83,9 @@ func TestPlanPreviewTierRoutesEachFileToItsOwner(t *testing.T) {
 		{"anim.gif", 100, tierImage},
 		{"photo.webp", 100, tierImage},
 		{"scan.bmp", 100, tierImage},
-		{"logo.svg", 100, tierText}, // XML source, however large
+		{"logo.svg", 100, tierSVG},
+		{"logo.svg", svgRenderCap, tierSVG},
+		{"logo.svg", svgRenderCap + 1, tierText}, // too heavy to draw each frame: it reads as source
 		{"logo.svg", 30 * mib, tierText},
 		{"icon.ico", 100, tierWebImage},
 		{"photo.avif", 100, tierWebImage},
@@ -377,7 +379,7 @@ func TestMarkdownRendersAsFormattedTextAndSourceIsOneClickAway(t *testing.T) {
 	saveEvidence(t, "files-markdown-rendered", tt)
 
 	code, rendered := st.nativeCode, st.nativeMarkdown
-	sh.setMarkdownSource(true)
+	sh.setPreviewSource(true)
 	settle(tt, pump, 2)
 	if st.nativeCode != code || st.nativeMarkdown != rendered {
 		t.Fatal("switching to Source must keep both views, not read the file again")
@@ -386,7 +388,7 @@ func TestMarkdownRendersAsFormattedTextAndSourceIsOneClickAway(t *testing.T) {
 		t.Fatalf("Source must show the markup, not the formatted text: %q", tt.Texts())
 	}
 	saveEvidence(t, "files-markdown-source", tt)
-	sh.setMarkdownSource(false)
+	sh.setPreviewSource(false)
 	settle(tt, pump, 2)
 	if !tt.HasText("first item") || tt.HasText("- first item") {
 		t.Fatalf("Rendered must bring the formatted text back: %q", tt.Texts())
@@ -407,7 +409,7 @@ func TestMarkdownSourceKeepsTheGitGutter(t *testing.T) {
 	_, pump, sh, tt, root := previewShell(t, nil)
 	readme := filepath.Join(root, "README.md") // tracked and modified by the fixture
 	st := &sh.rightPanel
-	st.markdownSource = true
+	st.previewSource = true
 	openPreview(t, sh, pump, tt, readme)
 	if st.nativeCode == nil || st.nativeCode.DiffBase == nil {
 		t.Fatalf("Source of a modified tracked file needs HEAD's text for the gutter: %+v", st.nativeCode)
@@ -425,13 +427,13 @@ func TestSearchHitInTheOpenRenderedFileLandsInSource(t *testing.T) {
 	md := filepath.Join(root, "notes.md")
 	st := &sh.rightPanel
 	openPreview(t, sh, pump, tt, md)
-	if st.markdownSource || st.nativeMarkdown == nil {
+	if st.previewSource || st.nativeMarkdown == nil {
 		t.Fatal("the file must be open formatted first")
 	}
 	sh.openFileAt(md, 4, 2, 5) // "- first item": the word "first"
 	settle(tt, pump, 2)
-	if !st.markdownSource || st.reveal != nil {
-		t.Fatalf("the hit must flip to Source and be consumed: source=%v reveal=%v", st.markdownSource, st.reveal)
+	if !st.previewSource || st.reveal != nil {
+		t.Fatalf("the hit must flip to Source and be consumed: source=%v reveal=%v", st.previewSource, st.reveal)
 	}
 	if got := st.nativeCode.SelectedText(); got != "first" {
 		t.Fatalf("selected %q, want the match", got)
@@ -486,15 +488,16 @@ func TestMarkdownLinksOpenWhatTheyNameAndNothingElse(t *testing.T) {
 }
 
 // TestPreviewImagesGoNativeAndOnlyAVIFAndICOWantAPage: decodable formats are
-// native bitmaps, an SVG is source, an oversized AVIF says so, and with no
-// window to host the page an ICO says that instead of leaving the center blank.
+// native bitmaps, an SVG is a native drawing, an oversized AVIF says so, and
+// with no window to host the page an ICO says that instead of leaving the
+// center blank.
 func TestPreviewImagesGoNativeAndOnlyAVIFAndICOWantAPage(t *testing.T) {
 	_, pump, sh, tt, root := previewShell(t, map[string][]byte{
 		"dot.png":  tinyPNG(t),
 		"logo.svg": []byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`),
 		"icon.ico": []byte("not decoded natively"),
 		"big.avif": make([]byte, filesview.ImagePreviewCap+1),
-		"big.svg":  make([]byte, filesview.ImagePreviewCap+1),
+		"big.svg":  make([]byte, svgRenderCap+1),
 	})
 	st := &sh.rightPanel
 	at := func(name string) string { return filepath.Join(root, name) }
@@ -504,12 +507,12 @@ func TestPreviewImagesGoNativeAndOnlyAVIFAndICOWantAPage(t *testing.T) {
 		t.Fatalf("a PNG is a native bitmap: native=%q failed=%q page=%v", st.nativePreviewPath, st.nativeImageFailed, st.webImage)
 	}
 	openPreview(t, sh, pump, tt, at("logo.svg"))
-	if st.nativeCode == nil || st.webImage {
-		t.Fatal("an SVG reads as XML source in the code view")
+	if st.nativeSVG == nil || st.nativeCode == nil || st.webImage {
+		t.Fatal("an SVG is a native drawing with its XML one click away, never a page")
 	}
 	openPreview(t, sh, pump, tt, at("big.svg"))
-	if st.nativePreviewPath != at("big.svg") || st.nativeText == nil {
-		t.Fatalf("an oversized SVG still reads as source: native=%q", st.nativePreviewPath)
+	if st.nativePreviewPath != at("big.svg") || st.nativeText == nil || st.nativeSVG != nil {
+		t.Fatalf("an oversized SVG still reads as source: native=%q drawing=%v", st.nativePreviewPath, st.nativeSVG != nil)
 	}
 	openPreview(t, sh, pump, tt, at("big.avif"))
 	if !strings.Contains(st.nativeImageFailed, "too large") {
@@ -518,6 +521,105 @@ func TestPreviewImagesGoNativeAndOnlyAVIFAndICOWantAPage(t *testing.T) {
 	openPreview(t, sh, pump, tt, at("icon.ico"))
 	if st.webImage || !strings.Contains(st.nativeImageFailed, "could not start") || !tt.HasText("Can't preview this image") {
 		t.Fatalf("with no window to host the page the ICO must say so: page=%v failed=%q", st.webImage, st.nativeImageFailed)
+	}
+}
+
+// TestSVGShowsAsADrawingAndSourceIsOneClickAway: an SVG opens as its drawing
+// ("Image"), the Source choice swaps to the XML without reading the file
+// again, and the choice is the one Markdown keeps. A file MyGo cannot parse
+// has only its source, and says why.
+func TestSVGShowsAsADrawingAndSourceIsOneClickAway(t *testing.T) {
+	const logo = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect width="40" height="20" fill="#c00"/></svg>`
+	_, pump, sh, tt, root := previewShell(t, map[string][]byte{
+		"logo.svg":   []byte(logo),
+		"broken.svg": []byte(`<svg xmlns="http://www.w3.org/2000/svg"><rect`),
+	})
+	st := &sh.rightPanel
+	drawing, broken := filepath.Join(root, "logo.svg"), filepath.Join(root, "broken.svg")
+
+	openPreview(t, sh, pump, tt, drawing)
+	if st.nativeSVG == nil || st.nativeCode == nil || st.previewNote != "" {
+		t.Fatalf("a drawable SVG holds both views: drawing=%v code=%v note=%q", st.nativeSVG != nil, st.nativeCode != nil, st.previewNote)
+	}
+	if !tt.HasText("Image") || !tt.HasText("Source") || tt.HasText("Rendered") {
+		t.Fatalf("an SVG offers Image | Source, not Rendered: %q", tt.Texts())
+	}
+	if tt.HasText("since HEAD") {
+		t.Error("the code view's legend belongs to Source, not to the drawing")
+	}
+	// The drawing is a red rectangle: pixels, not labels, tell it is on screen.
+	if n := redPixels(tt.Image()); n < 2000 {
+		t.Fatalf("the drawing view must paint the SVG: %d red pixels", n)
+	}
+
+	code, svg := st.nativeCode, st.nativeSVG
+	sh.setPreviewSource(true)
+	settle(tt, pump, 2)
+	if st.nativeCode != code || st.nativeSVG != svg {
+		t.Fatal("switching to Source must keep both views, not read the file again")
+	}
+	if n := redPixels(tt.Image()); n != 0 {
+		t.Fatalf("Source is the XML, not the drawing: %d red pixels", n)
+	}
+	sh.setPreviewSource(false)
+	settle(tt, pump, 2)
+	if n := redPixels(tt.Image()); n < 2000 {
+		t.Fatalf("Image must bring the drawing back: %d red pixels", n)
+	}
+
+	openPreview(t, sh, pump, tt, broken)
+	if st.nativeSVG != nil || st.nativeCode == nil || st.previewNote == "" {
+		t.Fatalf("an SVG that cannot be parsed has its source and a reason: drawing=%v code=%v note=%q", st.nativeSVG != nil, st.nativeCode != nil, st.previewNote)
+	}
+	if tt.HasText("Image") || !tt.HasText(st.previewNote) {
+		t.Fatalf("the source shows with the reason and no Image choice: %q", tt.Texts())
+	}
+}
+
+// redPixels counts the pixels of img that are the SVG test's red.
+func redPixels(img *image.RGBA) int {
+	n := 0
+	for i := 0; i+3 < len(img.Pix); i += 4 {
+		if r, g, b := img.Pix[i], img.Pix[i+1], img.Pix[i+2]; r > 170 && g < 40 && b < 40 {
+			n++
+		}
+	}
+	return n
+}
+
+// TestMarkdownTooHeavyForAFrameReadsAsSourceAndSaysWhy: a block more than a
+// frame can carry (a quote of thousands of paragraphs, a text past the engine's
+// reach) cannot be formatted at all; the file shows its source with a note
+// rather than freezing the window.
+func TestMarkdownTooHeavyForAFrameReadsAsSourceAndSaysWhy(t *testing.T) {
+	var quote strings.Builder
+	for i := range mdBlockCap + 500 {
+		quote.WriteString("> paragraph " + strings.Repeat("x", i%7) + "\n>\n")
+	}
+	huge := "# Title\n\n" + strings.Repeat("word ", mdLeafCap/5+10) + "\n"
+	var many strings.Builder
+	for i := range 4000 {
+		many.WriteString("paragraph " + strings.Repeat("y", i%5) + "\n\n")
+	}
+	_, pump, sh, tt, root := previewShell(t, map[string][]byte{
+		"quote.md":     []byte(quote.String()),
+		"paragraph.md": []byte(huge),
+		"many.md":      []byte(many.String()),
+	})
+	st := &sh.rightPanel
+	for _, name := range []string{"quote.md", "paragraph.md"} {
+		openPreview(t, sh, pump, tt, filepath.Join(root, name))
+		if st.nativeMarkdown != nil || st.nativeCode == nil || st.previewNote == "" {
+			t.Fatalf("%s: too heavy to format, so source and a reason: md=%v code=%v note=%q", name, st.nativeMarkdown != nil, st.nativeCode != nil, st.previewNote)
+		}
+		if tt.HasText("Rendered") || !tt.HasText(st.previewNote) {
+			t.Fatalf("%s: no Rendered choice, the reason shown: %q", name, tt.Texts())
+		}
+	}
+	// A big document that is only many ordinary blocks is not too heavy.
+	openPreview(t, sh, pump, tt, filepath.Join(root, "many.md"))
+	if st.nativeMarkdown == nil || st.nativeMarkdown.rows == nil || st.previewNote != "" {
+		t.Fatalf("thousands of ordinary blocks format as rows: md=%v note=%q", st.nativeMarkdown != nil, st.previewNote)
 	}
 }
 

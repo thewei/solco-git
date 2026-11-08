@@ -2,6 +2,10 @@ github.com/ebitengine/purego v0.11.1 h1:2zpWRSQNVKN4eKsKO9eM1ILDgWfYMY9GwqRmK6Xe
 github.com/ebitengine/purego v0.11.1/go.mod h1:DCHPP08djqhNSoTfImcnHYQRZmd0qhakvrozqaEYhGQ=
 github.com/egoist/mygo v0.8.1 h1:88fxq0OvlxToKNoyN/99xRKFX7PhMquC83nK54stS4g=
 github.com/egoist/mygo v0.8.1/go.mod h1:dVav53PwF2xEotjf4oA5lTY2Jp2exgzyjLhbSXhbMwE=
+github.com/go-opentype/opentype v0.13.0 h1:q9K7IGDfwMP/ik51ZkwiYf6jbaqPfocvAIuojetd0UQ=
+github.com/go-opentype/opentype v0.13.0/go.mod h1:AOixevJf7XQaH7+WG+OMIOZEbYPXfMqklVk26Y6YTUU=
+github.com/go-tex/math v0.50.0 h1:YHJ3LYzS45zBoPKGBkZW4+LUQkOeHP30YWLsfXGZCpo=
+github.com/go-tex/math v0.50.0/go.mod h1:cPm5juijQkhFj1MCByLF8tOfZ+UswAGUPBh+Wy6+vbw=
 github.com/go-text/typesetting v0.3.5 h1:XZPUooClHY0Vf/rFyUyuPRNEkawARaFzLMQcXLSEyPk=
 github.com/go-text/typesetting v0.3.5/go.mod h1:XZO1hD+nQVyvVa5IicQk7FsCa4PFQaJ2soWAP1f//68=
 github.com/go-text/typesetting-utils v0.0.0-20260419141703-4ffe8874dabc h1:8FGo2It5K75XkavhTiCKExUfVaVDS1feBnLCru5qeoY=
@@ -14,3 +18,5 @@ golang.org/x/net v0.59.0 h1:5zfYln+w5XCxwrnMMJPufRgNoXEaGxl0wo5GqPXyues=
 golang.org/x/net v0.59.0/go.mod h1:2DA/G1UfVbCpQPeWTmMPGY7Cs2PkBkwu743bVX5PIVg=
 golang.org/x/text v0.43.0 h1:1QivrlhwAsnMOcqgOdl9my7s9OyZl8O5/UGUTJVXoWc=
 golang.org/x/text v0.43.0/go.mod h1:hbSIYA/amXcRXTFSZqh8tWHEoqRvvbKPJ2uz/KU+a+s=
+tuios.dev/sketch v0.4.0 h1:VSTqnwZCU9PKCwh01uUCSUqMEMcSwR/V9+j+YINwBXg=
+tuios.dev/sketch v0.4.0/go.mod h1:h553QTAks0AADC1LjCMrSFkqKjqeG0c+xrllTM13zLQ=

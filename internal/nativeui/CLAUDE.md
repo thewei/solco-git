@@ -28,7 +28,7 @@ Git（复制自 Solco，随 `solco-gitkit` 演进）
 - `image_compare.go`：图片改动的 2-up / Swipe / Onion 对比，画在已解码位图上。
 
 Files
-- `page_files.go`、`right_panel*.go`、`files_*.go`：Files 视图——忽略感知的树、原生预览分级（2026-11-08「Files preview: native first」，与 Solco 同一份：`files_markdown.go` 的 `planPreviewTier` 把文本/代码/SVG 源码交 `ui/editor`、≤ 256 KiB 的 Markdown 交 MyGo `ui/markdown`（Rendered | Source 一键切换，默认 Rendered）、PNG/JPEG/GIF/WebP/BMP 原生解码；只有 AVIF/ICO 经 `files_webview.go` 里 Go 现拼的几百字节页面，底色 `filesWebviewFill` = 窗口画布）、起始页、搜索、文件操作。
+- `page_files.go`、`right_panel*.go`、`files_*.go`：Files 视图——忽略感知的树、原生预览分级（2026-11-08「Files preview: native first」，与 Solco 同一份：`files_markdown.go` 的 `planPreviewTier` 把文本/代码交 `ui/editor`、≤ 2 MiB 的 Markdown 交 MyGo `ui/markdown`（Rendered | Source 一键切换，默认 Rendered；长文档由 `files_markdown_rows.go` 分行，`files_markdown_find.go` 管 ⌘F 查找，`files_markdown_html.go` 把原始 HTML 译成 Markdown 块，`files_markdown_rich.go` 画数学与 Mermaid）、≤ 1 MiB 的 SVG 画出来（Image | Source）、PNG/JPEG/GIF/WebP/BMP 原生解码；只有 AVIF/ICO 经 `files_webview.go` 里 Go 现拼的几百字节页面，底色 `filesWebviewFill` = 窗口画布）、起始页、搜索、文件操作；Quick Look / Copy Path / Reveal in Finder 由 `files_ops.go` 的 `filesPathItems` 给所有文件表面（树行、正文右键、Actions 菜单）。
 - `files_git.go`：Files 比 Solco 多出的 Git 层——Changed | All、M/U 标记与文件夹点、槽边改动条（对照 HEAD）、Plain | Blame、History、底栏图例；全部读自 git 快照/blame/cat-file。
 
 UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差异）
