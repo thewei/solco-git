@@ -14,6 +14,7 @@ import (
 	"github.com/egoist/mygo/plugins/updater"
 	updaterNative "github.com/egoist/mygo/plugins/updater/native"
 	"github.com/egoist/mygo/ui"
+	"github.com/thewei/solco-gitkit/engine"
 
 	"github.com/thewei/solco-git/internal/applog"
 	"github.com/thewei/solco-git/internal/nativeui"
@@ -25,6 +26,12 @@ import (
 const devAppName = "Solco-Git-dev"
 
 func main() {
+	// Git runs this very program as its editor while the LazyGit engine
+	// rewrites history: do that one job and leave, before anything else (a
+	// lock, a log file, a window) is touched.
+	if engine.RunDaemon() {
+		return
+	}
 	if !mygo.App.IsPackaged() {
 		mygo.App.SetName(devAppName)
 	}

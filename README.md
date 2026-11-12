@@ -52,6 +52,8 @@ Releasing: a `vX.Y.Z` tag equal to `mygo.config.ts`'s version builds and signs t
 go work init . && go work edit -replace github.com/thewei/solco-gitkit=../solco-gitkit
 ```
 
+The LazyGit-backed Git capabilities live in `solco-gitkit`'s nested `engine` module (`internal/nativeui/git_backend.go`), so the work file also lists it: `go work use ../solco-gitkit/engine`. Publishing order: tag `solco-gitkit` (`vX.Y.Z`), then `engine/vX.Y.Z`, then `GOWORK=off go get github.com/thewei/solco-gitkit/engine@engine/vX.Y.Z && go mod tidy` here; until then a commit that imports the engine does not build in CI. `SOLCOGIT_GIT_BACKEND=argv` runs everything on plain `git` again.
+
 `solco-gitkit` is public ([github.com/thewei/solco-gitkit](https://github.com/thewei/solco-gitkit), tagged `v0.1.0`), so CI here needs no credential.
 
 The UI kit (theme, components, icons, the Git review and Files presentation) started as a copy of Solco's `internal/nativeui`. `scripts/kit-parity.sh` lists, per shared file, whether the two copies are still identical (`--all`) or how far they differ, and `--diff <file.go>` shows one file; it needs the sibling `../solco` checkout (`SOLCO_DIR` when it is elsewhere).

@@ -3,7 +3,7 @@
 Go 1.27.3 + MyGo Native UI (upstream v0.8.1, no vendored fork). One window, a workspace per repository chosen from a pull-down in the sidebar's foot (in the title band while the sidebar is shut), with Back / Forward arrows on the sidebar band as in Solco (a Solco Git workspace is this app's own list of repositories — nothing to do with Herdr's); Git only through `git` (the runner in `solco-gitkit`). The standalone form of Solco's former Git and Files views (decision: Solco `docs/product-decisions.md`, 2026-11-07 · Solco Git and the right panel).
 
 <directory>
-main.go - app entry: single-instance lock, updater plugin (Check for Updates…), applog, the one Window, `solcogit://` and open-file handlers, hide-on-close / real quit
+main.go - app entry: first `engine.RunDaemon()` (Git runs this program as its editor while the LazyGit engine rewrites history; it does that one job and exits), single-instance lock, updater plugin (Check for Updates…), applog, the one Window, `solcogit://` and open-file handlers, hide-on-close / real quit
 internal/nativeui/ - presentation only: Window (workspace pull-down, Back/Forward history, welcome, Quick Launch, menu bar, settings incl. workspace management, pending links), one Shell per workspace (Changes / Commits / Files), the UI kit copied from Solco (theme, components, icons, Git review, Files), headless tests with real temporary repositories (see internal/nativeui/CLAUDE.md)
 internal/settings/ - the app's own preference file: appearance/density switches, a few workbench cosmetics, the window's restorable workspaces and recents; atomic 0600 write, newer schema refused, no credentials or content
 internal/preview/ - loopback-only static server and WebView window behind a Files HTML page's "Open Preview"

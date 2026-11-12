@@ -22,6 +22,7 @@ Solco Git 的全部呈现层；每个文件开头的 L3 头（`[INPUT]/[OUTPUT]/
 
 Git（复制自 Solco，随 `solco-gitkit` 演进）
 - `git_service*.go`：Shell 一侧对 `gitworkbench` 的编排——快照缓存与后台刷新、提交事务、变更操作。
+- `git_backend.go`：装到每个 `Runner.Backend` 的那一个 LazyGit `engine.Engine`（`SOLCOGIT_GIT_BACKEND=argv` 回到纯 argv 路径）；目前接管的能力见 solco-gitkit `engine/CLAUDE.md`。
 - `git_*.go`、`gd_*.go`、`surface.go`、`commit_surface.go`、`changes_panel.go`、`sidebar*.go`：Changes / Commits 的评审面（diff 行、行级暂存、图谱、ref 树、Stash/Reflog/补丁对话框、sequencer 状态条）。
 - `commit_tree.go`：Fork 的 File Tree——提交评审里 Diff | Tree 切换，按提交看整棵树（读 `ListTree`/`ReadBlob`，只读）。
 - `multi_push.go`：Push Multiple…——一次推多个分支与标签（`ReadPushOffer`/`PushMany`），分叉的标为受阻，永不强推。
