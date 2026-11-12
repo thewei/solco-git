@@ -27,6 +27,8 @@ Git（复制自 Solco，随 `solco-gitkit` 演进）
 - `git_*.go`、`gd_*.go`、`surface.go`、`commit_surface.go`、`changes_panel.go`、`sidebar*.go`：Changes / Commits 的评审面（diff 行、行级暂存、图谱、ref 树、Stash/Reflog/补丁对话框、sequencer 状态条）。
 - `git_undo.go`：Undo / Redo 的界面一侧（Repository 菜单，⌥⌘Z / ⇧⌥⌘Z；⌘Z 是 Edit 菜单的文本撤销，框架把它交给有焦点的输入框，视图收不到，所以不占用）：先读计划再出确认框写明将被撤销的动作，确认的是它的身份串，期间 HEAD 被别人动了就拒绝；底层是 solco-gitkit `reflog_undo.go`。
 - `git_recovery.go`：Recovery 面板（Repository ▸ Recovery…，2026-11-12 决定第 (9) 条）：列出 Safety Journal 里可找回的丢弃 / 删除 / 删分支 / drop stash / Drop All / 应用补丁，每行 Recover（找回前内核重新校验，文件又变了就拒绝）；丢弃、删除、删分支、drop stash、Drop All 的确认框和应用补丁的文件选择框不再写「无法撤销」而指向这里；底层是 solco-gitkit `journal.go`。
+- `git_conflict.go`：冲突编辑界面（Resolve Conflicts…：冲突文件右键菜单与合并横幅里的 Resolve…，2026-11-12 决定第 (10) 条）：整页弹层，每个冲突块一张卡（Current | Incoming 两栏、Base 勾选展开、Current / Incoming / Both / Base 四个选择、上下文只留块前后两行），下方可手改的 Result（MyGo editor），Apply & Stage；选块会重写 Result，Result 被手改后块按钮停用、出现 Reset Result，残留标记时 Apply 停用；不能逐行合并的文件只给原因与整文件选择；底层是 solco-gitkit `conflict.go`。
+- `git_conflict.go`：冲突编辑界面（Resolve Conflicts…：冲突文件右键菜单与合并横幅里的 Resolve…，2026-11-12 决定第 (10) 条）：整页弹层，每个冲突块一张卡（Current | Incoming 两栏、Base 勾选展开、Current / Incoming / Both / Base 四个选择、上下文只留块前后两行），下方可手改的 Result（MyGo editor），Apply & Stage；选块会重写 Result，Result 被手改后块按钮停用、出现 Reset Result，残留标记时 Apply 停用；不能逐行合并的文件只给原因与整文件选择；底层是 solco-gitkit `conflict.go`。
 - `commit_tree.go`：Fork 的 File Tree——提交评审里 Diff | Tree 切换，按提交看整棵树（读 `ListTree`/`ReadBlob`，只读）。
 - `multi_push.go`：Push Multiple…——一次推多个分支与标签（`ReadPushOffer`/`PushMany`），分叉的标为受阻，永不强推。
 - `image_compare.go`：图片改动的 2-up / Swipe / Onion 对比，画在已解码位图上。
@@ -51,6 +53,8 @@ UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差�
 - `git_commit_graph_test.go`：路线图的合同——布局（线性、分叉/合并、车道收拢、多尖端与窗口外的父、分支线色沿线不变）、几何有界（槽宽不超上限、每行宽度随该行用到的车道）、画法（点与线真的画在车道上、车道之外是纸）、真实合并仓库经真实读取后画成两车道并渲染；变异（丢颜色传递、关掉收拢、合并标记）各自变红已核对。
 - `git_undo_test.go`：先问后动（确认前 HEAD 不动）、确认期间 HEAD 被动过则拒绝、没有可撤销时只给提示、Repository 菜单两项带 ⌥⌘Z 系加速键（不占 Edit 菜单的 ⌘Z）且各开对应确认。
 - `git_recovery_test.go`：丢弃 + 删除后列表有对应条目且新的在前、Recover 放回内容、确认框指向 Recovery、Repository 菜单有 Recovery…、删掉的分支与 drop 的 stash 一并找回、应用的补丁与清空的 stash 一并找回。
+- `git_conflict_test.go`：真实合并冲突上的打开、点 Incoming 改写 Result 且 Apply 前不落盘、手改锁块与 Reset Result、Apply 暂存、残留标记时不能 Apply、一方删除只给整文件选择、Recovery 重开冲突；`SOLCOGIT_EVIDENCE` 保留 PNG。
+- `git_conflict_test.go`：真实合并冲突上的打开、点 Incoming 改写 Result 且 Apply 前不落盘、手改锁块与 Reset Result、Apply 暂存、残留标记时不能 Apply、一方删除只给整文件选择、Recovery 重开冲突；`SOLCOGIT_EVIDENCE` 保留 PNG。
 - `window_menu_test.go`：应用菜单合同——About 之后才是 Check for Updates…（main 接上更新器才有，每次重装菜单拿新菜单项），Settings… 与 Quit 不丢。
 - `window_workspaces_test.go`：工作区下拉与管理的合同——chip 始终是当前工作区；搜索（过滤、↑↓、↵ 切换并刷新、无命中时 ↵ 什么也不做）、最大高度与滚动、行右键移除、设置里的排序/移除/Add Workspace…（添加不抢前台）、每一种打开方式都加入清单、旧版 `tabs` 键读成工作区、清单上限、共享图标按钮是 Tab 停靠点。
 - `window_landing_test.go`：冷启动经链接落点——首读之后列表顶上是被点名文件的卡，内容分批读到后也不动，过了揭示窗口选中行仍是它。

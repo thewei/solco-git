@@ -84,11 +84,16 @@ func (s *Shell) gitSequencerBanner(c *ui.Context) {
 				ui.Text(c, "Files needing resolution").FontSize(Typography().Caption).FontWeight(WeightSemibold)
 				for _, path := range state.UnmergedPaths {
 					_, index := s.gdFileForPath(path)
-					link := tipped(c, compactButton(c, "Review Conflict: "+path).MaxWidth(270), path)
-					link.Disabled(index < 0)
-					if link.Clicked() && index >= 0 {
-						s.revealDiffFile(path)
-					}
+					ui.Row(c).FillWidth().Gap(Spacing().XS).AlignItems(ui.Center).Children(func() {
+						link := tipped(c.Key("review-"+path), compactButton(c.Key("review-"+path), "Review Conflict: "+path).MaxWidth(210), path)
+						link.Disabled(index < 0)
+						if link.Clicked() && index >= 0 {
+							s.revealDiffFile(path)
+						}
+						if compactPrimaryButton(c.Key("resolve-"+path), "Resolve…").Disabled(s.git.opBusy).Clicked() {
+							s.openConflictEditor(path)
+						}
+					})
 				}
 			})
 		}

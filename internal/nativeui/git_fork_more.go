@@ -24,6 +24,7 @@ type gitMoreState struct {
 	tag       tagDialogState
 	reflog    reflogSheetState
 	recovery  recoverySheetState
+	conflict  conflictSheetState
 	submodule submoduleDialogState
 	stash     stashDialogState
 	push      multiPushState
@@ -743,6 +744,7 @@ func (s *Shell) gitMoreDialogs(c *ui.Context) {
 	s.tagDialog(c)
 	s.reflogSheet(c)
 	s.recoverySheet(c)
+	s.conflictSheet(c)
 	s.submoduleDialog(c)
 	s.stashDialog(c)
 	s.multiPushDialog(c)

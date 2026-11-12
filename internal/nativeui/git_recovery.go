@@ -125,6 +125,8 @@ func recoveryText(op gitworkbench.Operation) (kind, summary string) {
 		kind = "stash"
 	case gitworkbench.OpKindApplyPatch:
 		kind = "patch"
+	case gitworkbench.OpKindResolveConflict:
+		kind = "resolve"
 	default:
 		kind = op.Kind
 	}
@@ -159,6 +161,8 @@ func (s *Shell) recoverOperation(op gitworkbench.Operation) {
 			return "Recovered " + op.Name, nil
 		case gitworkbench.OpKindApplyPatch:
 			return "Took back " + op.Name, nil
+		case gitworkbench.OpKindResolveConflict:
+			return "Reopened the conflict in " + op.Paths[0], nil
 		}
 		return "Recovered " + pluralFiles(len(op.Paths)), nil
 	})

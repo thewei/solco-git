@@ -215,23 +215,18 @@ func (s *Shell) worktreeMenu(m *ui.Menu, wt gitworkbench.Worktree, main bool) {
 // gdConflictItems resolves one conflicted file: keep either side, or accept
 // the file as edited by hand.
 func (s *Shell) gdConflictItems(m *ui.Menu, cf *gitworkbench.ChangeFile) {
-	resolve := func(side gitworkbench.ConflictSide, done string) {
-		path := cf.Path
-		s.runGitOp("Resolve Conflict", func(ctx context.Context, root string) (string, error) {
-			if err := s.git.runner.ResolveConflict(ctx, root, path, side); err != nil {
-				return "", err
-			}
-			return done + path, nil
-		})
+	if m.Item("Resolve Conflicts…").Disabled(s.git.opBusy).Chosen() {
+		s.openConflictEditor(cf.Path)
 	}
+	m.Separator()
 	if m.Item("Keep Current Branch's Version").Disabled(s.git.opBusy).Chosen() {
-		resolve(gitworkbench.ConflictOurs, "Kept the current branch's version of ")
+		s.resolveConflictSide(cf.Path, gitworkbench.ConflictOurs, "Kept the current branch's version of ")
 	}
 	if m.Item("Take Incoming Version").Disabled(s.git.opBusy).Chosen() {
-		resolve(gitworkbench.ConflictTheirs, "Took the incoming version of ")
+		s.resolveConflictSide(cf.Path, gitworkbench.ConflictTheirs, "Took the incoming version of ")
 	}
 	if m.Item("Mark as Resolved").Disabled(s.git.opBusy).Chosen() {
-		resolve(gitworkbench.ConflictMarked, "Marked resolved: ")
+		s.resolveConflictSide(cf.Path, gitworkbench.ConflictMarked, "Marked resolved: ")
 	}
 	m.Separator()
 }
