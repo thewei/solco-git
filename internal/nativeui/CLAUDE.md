@@ -17,12 +17,13 @@ Solco Git 的全部呈现层；每个文件开头的 L3 头（`[INPUT]/[OUTPUT]/
 - `external_open.go`：`solcogit://open?repo=&view=&file=` 与 `open -a` 的唯一入口（解析、校验、不记日志）。
 - `shortcuts.go`：键位单一来源——菜单里列出的键就是绑定的键（⌘B 是唯一的窗口内快捷键，其余都是菜单加速键）。
 - `shell.go` / `shell_tab.go`：一个工作区 = 一个 Shell（Git + Files 所需的那部分状态）及其作为窗口成员的生命周期接缝；`view.go` 是工作区内的三个视图（Changes / Commits / Files），没有页面栈。
-- `frame.go`：三栏版面（侧栏｜标题带｜舞台）落点，侧栏主体按视图加 key；`viewTabs` 是直接铺在侧栏材质上的页签条（2026-11-08 第八轮）：三个页签都有图形，选中的是一层侧栏选中色、图标加名称并吃掉剩余宽度，其余是 28 点的图标方块（名字在提示与无障碍名里）；各页签从自身内容宽度（`viewTabBases` / `viewTabNeed`）起，Changes 的计数不被挤成省略号，放不下时丢闲置计数；侧栏页脚 `sidebarFoot` = 工作区芯片 + Settings（原来的 "Fetched … ago" 搬进 Fetch 钮的提示 `fetchTip`）。
+- `frame.go`：三栏版面（侧栏｜标题带｜舞台）落点，侧栏主体按视图加 key；`viewTabs` 是直接铺在侧栏材质上的三行视图开关（2026-11-12 起，原页签条已退役）：一行一个图形加名称，选中的是整行铺满的侧栏选中色（`materialNavGroup` / `materialNavRow`，行高与圆角同树行），Changes 的计数贴行尾，行下一条细线，仍是名为 View 的单选组；侧栏页脚 `sidebarFoot` = 工作区芯片 + Settings（原来的 "Fetched … ago" 搬进 Fetch 钮的提示 `fetchTip`）。
 - `boundary.go`：从 Solco 复制来的代码原本跨出去调用的几个小边界，在这里用本应用的语义落地。
 
 Git（复制自 Solco，随 `solco-gitkit` 演进）
 - `git_service*.go`：Shell 一侧对 `gitworkbench` 的编排——快照缓存与后台刷新、提交事务、变更操作。
 - `git_backend.go`：装到每个 `Runner.Backend` 的那一个 LazyGit `engine.Engine`（`SOLCOGIT_GIT_BACKEND=argv` 回到纯 argv 路径）；目前接管的能力见 solco-gitkit `engine/CLAUDE.md`。
+- `git_commit_graph.go`：Commits 的路线图（2026-11-12 起整体换成 TanGit / LazyGit 的画法，无开关）：LazyGit getNextPipes 的管道集布局经 TanGit 移植（车道向左收拢），VS Code 风格画法——两像素线贴设备像素、底色光晕、三次贝塞尔 S 弯、带环圆点；槽宽有上限，每行文字起点随该行用到的车道；引用芯片仍用 `git_commit_chips.go` 的 `gitLaneColors`，车道色是自己的 `gitGraphColor`。
 - `git_*.go`、`gd_*.go`、`surface.go`、`commit_surface.go`、`changes_panel.go`、`sidebar*.go`：Changes / Commits 的评审面（diff 行、行级暂存、图谱、ref 树、Stash/Reflog/补丁对话框、sequencer 状态条）。
 - `commit_tree.go`：Fork 的 File Tree——提交评审里 Diff | Tree 切换，按提交看整棵树（读 `ListTree`/`ReadBlob`，只读）。
 - `multi_push.go`：Push Multiple…——一次推多个分支与标签（`ReadPushOffer`/`PushMany`），分叉的标为受阻，永不强推。
@@ -33,7 +34,7 @@ Files
 - `files_git.go`：Files 比 Solco 多出的 Git 层——Changed | All、M/U 标记与文件夹点、槽边改动条（对照 HEAD）、Plain | Blame、History、底栏图例；全部读自 git 快照/blame/cat-file。
 
 UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差异）
-- `theme.go`、`design_system.go`、`ds_components.go`、`components.go`、`controls.go`、`gorex_style.go`、`icons.go`、`tooltip.go`、`motion.go`、`constants.go`、`list_nav.go`、`dialogs.go`、`code_theme.go`、`chrome_parts.go`、`script_actions.go`、`workbench_ui.go`、`page_common.go`、`page_settings.go`：token、控件、图标、提示、动效、列表键盘导航、设置页等共享部件。改视觉先改 token 或共享默认，不在业务组件上 inline 覆盖。侧栏没有自己的底色（vibrancy 透出来），放在它上面的控件（视图页签、Files 的 Changed | All、搜索的 Files | Content）一律用 `ds_components.go` 的 `materialFace` 一族——选中是侧栏选中色的一层淡墨、悬停是侧栏悬停色，不是 `segmentedTrack` 那种不透明的白槽；`segmentedTrack` 只留给画布上的控件。
+- `theme.go`、`design_system.go`、`ds_components.go`、`components.go`、`controls.go`、`gorex_style.go`、`icons.go`、`tooltip.go`、`motion.go`、`constants.go`、`list_nav.go`、`dialogs.go`、`code_theme.go`、`chrome_parts.go`、`script_actions.go`、`workbench_ui.go`、`page_common.go`、`page_settings.go`：token、控件、图标、提示、动效、列表键盘导航、设置页等共享部件。改视觉先改 token 或共享默认，不在业务组件上 inline 覆盖。侧栏没有自己的底色（vibrancy 透出来），放在它上面的控件（视图三行、Files 的 Changed | All、搜索的 Files | Content）一律用 `ds_components.go` 的 `materialFace` 一族——选中是侧栏选中色的一层淡墨、悬停是侧栏悬停色，不是 `segmentedTrack` 那种不透明的白槽；`segmentedTrack` 只留给画布上的控件。
 
 测试（无原生窗口，直接驱动 Window/Shell 模型；后台结果进队列，由测试线程排空）
 - `testutil_test.go`：共享夹具（真实临时仓库 `gitFixture`、`newTestWindow`、`uiPump`、`settle`、`saveEvidence`）。
@@ -44,7 +45,8 @@ UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差�
 - `log_privacy_test.go`：日志合同——打开仓库、跑一次 Git 操作、收到一条被拒的链接后，默认级别的日志有操作名与工作区数，没有仓库路径/目录名/文件名/链接参数（抓取本身也被断言）。
 - `quick_commit_test.go`：空闲提交条上第一次点击 Commit 就打开提交对话框（按钮 KeepFocus；去掉则红：按下展开表单、按钮换了父级，松手落空）。
 - `staged_pane_test.go`：Staged 列表的高度——分隔条真的改它（旧的 Height 被 Grow 的 0% basis 吞掉，两个列表等分）、一个暂存文件不把 Unstaged 行挤到 Staged 头后面。
-- `view_tabs_test.go`：侧栏页签条的合同——Changes 的三位数计数整段可见（旧的等分行为红）；只有选中的页签画名称、其余只有图标，条在 200/252/400 三种侧栏宽度下不出槽、不重叠、等高；放不下闲置计数时才丢它；选中是一层淡墨而不是白纸（明暗两种外观，变异成"画纸/带槽/闲置也画名字"各自变红已核对），Files 树的 Changed | All 与搜索的 Files | Content 同样；点、方向键、悬停淡墨与提示（名称 + 计数 + ⌘1–3）。
+- `view_tabs_test.go`：侧栏三行视图的合同——Changes / Commits / Files 自上而下三行、整行宽、名称在 200/252/400 三种侧栏宽度下都画出；Changes 的三位数计数贴行尾且完整；选中是侧栏选中色的一层淡墨整行铺满、不是白纸（明暗两种外观），Files 树的 Changed | All 与搜索的 Files | Content 同样；点、方向键、悬停淡墨与提示（名称 + 计数 + ⌘1–3）。
+- `git_commit_graph_test.go`：路线图的合同——布局（线性、分叉/合并、车道收拢、多尖端与窗口外的父、分支线色沿线不变）、几何有界（槽宽不超上限、每行宽度随该行用到的车道）、画法（点与线真的画在车道上、车道之外是纸）、真实合并仓库经真实读取后画成两车道并渲染；变异（丢颜色传递、关掉收拢、合并标记）各自变红已核对。
 - `window_menu_test.go`：应用菜单合同——About 之后才是 Check for Updates…（main 接上更新器才有，每次重装菜单拿新菜单项），Settings… 与 Quit 不丢。
 - `window_workspaces_test.go`：工作区下拉与管理的合同——chip 始终是当前工作区；搜索（过滤、↑↓、↵ 切换并刷新、无命中时 ↵ 什么也不做）、最大高度与滚动、行右键移除、设置里的排序/移除/Add Workspace…（添加不抢前台）、每一种打开方式都加入清单、旧版 `tabs` 键读成工作区、清单上限、共享图标按钮是 Tab 停靠点。
 - `window_landing_test.go`：冷启动经链接落点——首读之后列表顶上是被点名文件的卡，内容分批读到后也不动，过了揭示窗口选中行仍是它。

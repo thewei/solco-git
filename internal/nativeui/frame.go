@@ -2,7 +2,7 @@ package nativeui
 
 /**
  * [INPUT]: 依赖 shell.go 的 Shell（一个仓库标签）、git_* 的快照/分支/同步动作、files 的树与搜索、window.go 的 Window（设置、标签）
- * [OUTPUT]: 对外提供一个标签的窗口外壳：viewTabs（Changes｜Commits｜Files 页签条，直接铺在侧栏材质上：每个页签都有图形，选中的是一层侧栏选中色、显示图标加名称并吃掉剩余宽度，其余只剩 28 点的图标方块，名字在提示与无障碍名里；Changes 的计数选中时跟在名称后、闲置时跟在图标后，放不下时丢闲置计数：viewTabBases / viewTabNeed，计数不被挤成省略号）、repoHead（仓库名 + 搜索 + 刷新）、sidebarColumn（侧栏正文）、sidebarFoot（工作区芯片 + Settings，同 Solco 页脚）、titleTools（标题带右侧：文件栏开关/Split·Unified、Fetch/Pull/Push、Actions）、branchChip + branchSwitcherPanel（分支下拉）、stage（中央：Changes/Commits 评审面或 Files 页）、fetchTip/fetchedAgo/checkFetchedAt（Fetch 钮提示里的"上次抓取"，原来页脚那句 Fetched … ago 搬到这里）
+ * [OUTPUT]: 对外提供一个标签的窗口外壳：viewTabs（Changes｜Commits｜Files 三行，直接铺在侧栏材质上：一行一个图形加名称，选中的是整行铺满的侧栏选中色，其余悬停时才有悬停色；Changes 的计数贴行尾，行下一条细线；仍是名为 View 的单选组，提示里有 ⌘1/⌘2/⌘3）、repoHead（仓库名 + 搜索 + 刷新）、sidebarColumn（侧栏正文）、sidebarFoot（工作区芯片 + Settings，同 Solco 页脚）、titleTools（标题带右侧：文件栏开关/Split·Unified、Fetch/Pull/Push、Actions）、branchChip + branchSwitcherPanel（分支下拉）、stage（中央：Changes/Commits 评审面或 Files 页）、fetchTip/fetchedAgo/checkFetchedAt（Fetch 钮提示里的"上次抓取"，原来页脚那句 Fetched … ago 搬到这里）
  * [POS]: Solco Git 的版面落点：把复制来的 Git 评审面与 Files 页装进设计稿的三栏（侧栏｜标题带｜舞台）；侧栏顶是三个视图，不再有 Solco 那样的 Terminal/Sessions/Hosts 标签
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -41,12 +41,12 @@ var sidebarViews = [...]struct {
 	{viewFiles, "Files", iconFolder, accelFiles},
 }
 
-// viewTabs is the sidebar's first row: the three views as a tab strip that sits
-// straight on the sidebar's material (2026-11-08). The chosen tab is a wash
-// holding its glyph and name and takes the room the others leave; the others
-// are their glyph alone, named by their tooltip. The Changes tab carries the
-// changed-file count — after its name while chosen, after its glyph otherwise,
-// for as long as the row has room for it.
+// viewTabs is the sidebar's first block: the three views as three rows, one
+// glyph and one name each, straight on the sidebar's material (2026-11-12, the
+// TanGit review; it was a tab strip). The chosen row is the sidebar's selection
+// wash across the full row, the others rest on the material and take the hover
+// wash. The Changes row carries the changed-file count at its right edge; a
+// hairline closes the block.
 func (s *Shell) viewTabs(c *ui.Context) {
 	chosen := 0
 	for i, v := range sidebarViews {
@@ -58,90 +58,38 @@ func (s *Shell) viewTabs(c *ui.Context) {
 	if snap := s.gitSnapshot(); snap != nil {
 		changes = len(snap.Files)
 	}
-	bases, idleCount := s.viewTabBases(c, chosen, changes)
-	ui.Row(c).FillWidth().Padding(2, sidebarGutter, 6).Children(func() {
-		tabs := ui.SegmentedBase(c, &chosen, len(sidebarViews))
-		materialTabStrip(c, tabs, "View")
-		tabs.Track.FillWidth().Children(func() {
-			for i, v := range sidebarViews {
-				on := i == chosen
-				count := 0
-				if v.kind == viewChanges {
-					count = changes
-				}
-				seg, ink := materialTab(c, tabs, i, on, v.label)
-				if on {
-					seg.Basis(bases[i]).Grow(1)
-				} else {
-					seg.Width(bases[i]).Shrink(0)
-				}
-				tip := v.label
-				if count > 0 {
-					tip += " · " + pluralFiles(count)
-				}
-				tipped(c, seg, tip, tipKeys(acceleratorKeycaps(v.accel)))
-				seg.Children(func() {
-					ui.Icon(c, v.glyph).Size(gorexIconGlyph, gorexIconGlyph).TextColor(ink).Shrink(0)
-					if on {
-						ui.Text(c, v.label).FontSize(Typography().Body).FontWeight(WeightMedium).TextColor(ink).SingleLine()
+	ui.Column(c).FillWidth().Children(func() {
+		ui.Column(c).FillWidth().Padding(2, sidebarGutter, 6).Children(func() {
+			before := chosen
+			materialNavGroup(c, "View", func() {
+				for i, v := range sidebarViews {
+					count := 0
+					if v.kind == viewChanges {
+						count = changes
 					}
-					if count > 0 && (on || idleCount) {
-						ui.Text(c, itoa(count)).FontSize(Typography().Caption).FontWeight(WeightSemibold).
-							TextColor(ink).SingleLine()
+					row, ink := materialNavRow(c, &chosen, i, v.label, s.sidebarRowHeight())
+					tip := v.label
+					if count > 0 {
+						tip += " · " + pluralFiles(count)
 					}
-				})
+					tipped(c, row, tip, tipKeys(acceleratorKeycaps(v.accel)))
+					row.Children(func() {
+						ui.Icon(c, v.glyph).Size(gorexIconGlyph, gorexIconGlyph).TextColor(ink).Shrink(0)
+						ui.Text(c, v.label).FontSize(Typography().Body).FontWeight(WeightMedium).TextColor(ink).
+							SingleLine().Grow(1).MinWidth(0)
+						if count > 0 {
+							ui.Text(c, itoa(count)).FontSize(Typography().Caption).FontWeight(WeightSemibold).
+								TextColor(ink).SingleLine().Shrink(0)
+						}
+					})
+				}
+			}).FillWidth()
+			if chosen != before {
+				s.showView(sidebarViews[chosen].kind)
 			}
 		})
-		if tabs.Track.Changed() {
-			s.showView(sidebarViews[chosen].kind)
-		}
+		ui.Divider(c)
 	})
-}
-
-// viewTabBases is the width each view tab starts from, and whether the idle
-// Changes tab shows its count. Tabs that all start from nothing would split the
-// row evenly and clip "Changes 330" to "Chan… 3…" (the real machine, 2026-11-08);
-// these start from what their own content asks for, so the chosen tab (the only
-// one that grows) never loses a letter. When the row cannot hold the idle count
-// beside the chosen tab it is dropped — the tooltip still says it.
-func (s *Shell) viewTabBases(c *ui.Context, chosen, changes int) (bases [len(sidebarViews)]float32, idleCount bool) {
-	for _, idleCount = range []bool{true, false} {
-		total := float32(len(sidebarViews)-1) * Spacing().XXS
-		for i, v := range sidebarViews {
-			count := 0
-			if v.kind == viewChanges {
-				count = changes
-			}
-			bases[i] = materialTabIdleW
-			switch {
-			case i == chosen:
-				bases[i] = viewTabNeed(c, v.label, count, true)
-			case count > 0 && idleCount:
-				bases[i] = viewTabNeed(c, v.label, count, false)
-			}
-			total += bases[i]
-		}
-		if total <= s.sidebarW-2*sidebarGutter {
-			break
-		}
-	}
-	return bases, idleCount
-}
-
-// viewTabNeed is the width one view tab's own content asks for: its padding,
-// glyph and — when it shows them — name and count.
-func viewTabNeed(c *ui.Context, label string, count int, named bool) float32 {
-	w := 2*float32(materialTabPadX) + gorexIconGlyph
-	if named {
-		lw, _ := c.MeasureText(0, ui.Span{Text: label, Size: Typography().Body, Weight: WeightMedium})
-		w += Spacing().S + lw
-	}
-	if count > 0 {
-		cw, _ := c.MeasureText(0, ui.Span{Text: itoa(count), Size: Typography().Caption, Weight: WeightSemibold})
-		w += Spacing().S + cw
-	}
-	// A pixel or two of slack: text measured to the dot would still clip.
-	return w + 2
 }
 
 // repoHead is the sidebar's head: the repository's name (its folder in the

@@ -1,9 +1,9 @@
 package nativeui
 
 /**
- * [INPUT]: frame.go（viewTabs / viewTabBases / viewTabNeed）、ds_components.go（materialFace 与 materialTab*、materialSegment*）、git_sidebar_tree.go（segmentTabs）、files_git.go（filesScopeTabs）、真实临时仓库、headless ui.Tester
- * [OUTPUT]: 侧栏视图页签的合同：三个页签都有图形，只有选中的显示名称（其余只有图形，名字在提示与无障碍名里），选中的吃掉剩余宽度，Changes 的计数在任何宽度下都完整且空间不够时只丢"闲置计数"；页签在 vibrancy 材质上不画纸（选中是侧栏选中色的一层淡墨，不是白底/不透明槽），侧栏里另外两个两段开关（Show / Search in）同样
- * [POS]: 2026-11-08「Solco Git 侧栏页签：选中显示图标加名称、其余只有图标，不再是一个白底的分段控件」决定（用户："现在白底的话或者颜色直接显示出来，有点难以融入我们现在侧栏的半透明的效果"）的回归防线
+ * [INPUT]: frame.go（viewTabs）、ds_components.go（materialNavGroup / materialNavRow、materialFace 与 materialSegment*）、git_sidebar_tree.go（segmentTabs）、files_git.go（filesScopeTabs）、真实临时仓库、headless ui.Tester
+ * [OUTPUT]: 侧栏三行视图的合同：Changes / Commits / Files 一行一个图形加名称、自上而下排成一列、整行宽，名称在任何宽度下都画出；Changes 的计数贴行尾、在任何宽度下都完整；行在 vibrancy 材质上不画纸（选中是侧栏选中色的一层淡墨整行铺满，不是白底/不透明槽），侧栏里另外两个两段开关（Show / Search in）同样
+ * [POS]: 2026-11-12「Solco Git on LazyGit's command layer …」决定第 (5) 条（视图开关从页签条改为三行）与 2026-11-08 的材质原则（用户："现在白底的话或者颜色直接显示出来，有点难以融入我们现在侧栏的半透明的效果"）的回归防线
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 
@@ -64,8 +64,8 @@ func TestViewTabsKeepTheChangeCountWhole(t *testing.T) {
 	}
 }
 
-// stripRects reads the three view tabs' boxes off the accessibility tree: the
-// tabs are the segments of the "View" radio group, named by their view.
+// stripRects reads the three view rows' boxes off the accessibility tree: the
+// rows are the radios of the "View" group, named by their view.
 func stripRects(t *testing.T, tt *ui.Tester) (rects [len(sidebarViews)]ui.Rect, checked int) {
 	t.Helper()
 	checked = -1
@@ -73,9 +73,6 @@ func stripRects(t *testing.T, tt *ui.Tester) (rects [len(sidebarViews)]ui.Rect, 
 		a, ok := tt.AccessByRole(ui.RoleRadio, v.label)
 		if !ok {
 			t.Fatalf("no %q tab in the accessibility tree", v.label)
-		}
-		if !a.Segment {
-			t.Errorf("tab %q is not a segment of the View group", v.label)
 		}
 		rects[i] = a.Bounds
 		if a.Checked {
@@ -112,10 +109,11 @@ func occurrences(texts []string, s string) int {
 	return n
 }
 
-// Every tab has a glyph; only the chosen one says its name and it takes the
-// room the others leave. The strip stays inside the sidebar's gutters, tabs in
-// order and apart, at the narrowest, the default and the widest sidebar.
-func TestViewTabsNameOnlyTheChosenView(t *testing.T) {
+// The three views are three rows, each with its glyph and its name whichever is
+// chosen: stacked top to bottom in order, one row height each, the same x and
+// the full width between the sidebar's gutters, at the narrowest, the default
+// and the widest sidebar.
+func TestViewRowsAreThreeStackedRows(t *testing.T) {
 	root := gitFixture(t, "tabs")
 	for _, width := range []float32{sidebarMinWidth, sidebarWidth, sidebarMaxWidth} {
 		w, pump := newTestWindow(t)
@@ -127,86 +125,36 @@ func TestViewTabsNameOnlyTheChosenView(t *testing.T) {
 			settle(tt, pump, 3)
 			rects, got := stripRects(t, tt)
 			if got != want {
-				t.Fatalf("width %.0f, %s: the chosen tab is %d, want %d", width, view.label, got, want)
+				t.Fatalf("width %.0f, %s: the chosen row is %d, want %d", width, view.label, got, want)
 			}
 			texts := stripTexts(t, tt, "tabs")
-			y, h := rects[0].Y, rects[0].H
-			if h != materialTabHeight {
-				t.Errorf("width %.0f, %s: the strip is %.1f high, want %d", width, view.label, h, materialTabHeight)
-			}
+			rowH := sh.sidebarRowHeight()
 			for i, r := range rects {
-				if r.Y != y || r.H != h {
-					t.Errorf("width %.0f, %s: tab %d is %v, not on the strip's row", width, view.label, i, r)
+				if r.H != rowH {
+					t.Errorf("width %.0f, %s: row %d is %.1f high, want %.1f", width, view.label, i, r.H, rowH)
 				}
-				if i > 0 && r.X < rects[i-1].X+rects[i-1].W {
-					t.Errorf("width %.0f, %s: tab %d %v overlaps tab %d %v", width, view.label, i, r, i-1, rects[i-1])
+				if r.X != rects[0].X || r.W != rects[0].W {
+					t.Errorf("width %.0f, %s: row %d (%v) is not in the first row's column (%v)", width, view.label, i, r, rects[0])
 				}
-				if i != want && r.W >= rects[want].W {
-					t.Errorf("width %.0f, %s: idle tab %d (%.1f) is not narrower than the chosen one (%.1f)", width, view.label, i, r.W, rects[want].W)
+				if i > 0 && r.Y < rects[i-1].Y+rects[i-1].H {
+					t.Errorf("width %.0f, %s: row %d %v does not sit below row %d %v", width, view.label, i, r, i-1, rects[i-1])
 				}
-				if named := occurrences(texts, sidebarViews[i].label) == 2; named != (i == want) {
-					t.Errorf("width %.0f, %s: tab %d name drawn = %v, want %v (strip: %q)", width, view.label, i, named, i == want, texts)
+				if occurrences(texts, sidebarViews[i].label) != 2 {
+					t.Errorf("width %.0f, %s: row %d's name is not drawn (list: %q)", width, view.label, i, texts)
 				}
 			}
-			first, last := rects[0], rects[len(rects)-1]
-			if first.X < sidebarGutter-0.5 || last.X+last.W > width-sidebarGutter+0.5 {
-				t.Errorf("width %.0f, %s: the strip %.1f..%.1f leaves the %d-point gutters", width, view.label, first.X, last.X+last.W, int(sidebarGutter))
+			first := rects[0]
+			if first.X < sidebarGutter-0.5 || first.X+first.W > width-sidebarGutter+0.5 || first.W < width-2*sidebarGutter-0.5 {
+				t.Errorf("width %.0f, %s: the rows span %.1f..%.1f, want the full %d-point gutters", width, view.label, first.X, first.X+first.W, int(sidebarGutter))
 			}
-			// The fixture has two changed files: the count shows in the strip
-			// whichever tab is chosen.
+			// The fixture has two changed files: the count shows once whichever
+			// view is chosen, at the right edge of the Changes row.
 			if occurrences(texts, "2") != 1 {
-				t.Errorf("width %.0f, %s: the Changes count is not in the strip once (strip: %q)", width, view.label, texts)
+				t.Errorf("width %.0f, %s: the Changes count is not listed once (list: %q)", width, view.label, texts)
 			}
-		}
-	}
-}
-
-// With the least room and a count too long for it, the idle Changes tab gives
-// up its count (the tooltip still says it) rather than squeezing the chosen
-// tab; with room it keeps it, and the chosen tab never loses a letter.
-func TestViewTabBasesDropTheIdleCountOnlyWhenTheRowIsFull(t *testing.T) {
-	cases := []struct {
-		width   float32
-		chosen  int
-		changes int
-		idle    bool
-	}{
-		{sidebarWidth, 1, 330, true},
-		{sidebarWidth, 2, 12, true},
-		{sidebarWidth, 1, 0, true}, // nothing to count: nothing to drop
-		{sidebarMinWidth, 1, 12, true},
-		{sidebarMinWidth, 0, 12, true},
-		{sidebarMinWidth, 1, 99999, false},
-		{sidebarMinWidth, 2, 99999, true}, // a short name leaves the room back
-	}
-	for _, tc := range cases {
-		sh := &Shell{sidebarW: tc.width}
-		var bases [len(sidebarViews)]float32
-		var idle bool
-		var need float32
-		probe := ui.NewTester(func(c *ui.Context) {
-			bases, idle = sh.viewTabBases(c, tc.chosen, tc.changes)
-			count := 0
-			if sidebarViews[tc.chosen].kind == viewChanges {
-				count = tc.changes
+			if c, ok := tt.Find("2"); !ok || c.X+c.W > rects[0].X+rects[0].W || c.X < rects[0].X+rects[0].W/2 {
+				t.Errorf("width %.0f, %s: the count %+v is not at the Changes row's right edge %v", width, view.label, c, rects[0])
 			}
-			need = viewTabNeed(c, sidebarViews[tc.chosen].label, count, true)
-		}, 100, 100)
-		probe.Frame()
-		name := fmt.Sprintf("width %.0f, tab %d chosen, %d changes", tc.width, tc.chosen, tc.changes)
-		if idle != tc.idle {
-			t.Errorf("%s: idle count = %v, want %v", name, idle, tc.idle)
-		}
-		if bases[tc.chosen] != need {
-			t.Errorf("%s: the chosen tab starts from %.1f, want its own need %.1f", name, bases[tc.chosen], need)
-		}
-		for i, b := range bases {
-			if i != tc.chosen && sidebarViews[i].kind != viewChanges && b != materialTabIdleW {
-				t.Errorf("%s: idle tab %d starts from %.1f, want %d", name, i, b, materialTabIdleW)
-			}
-		}
-		if !idle && sidebarViews[0].kind == viewChanges && tc.chosen != 0 && bases[0] != materialTabIdleW {
-			t.Errorf("%s: the idle Changes tab keeps %.1f without its count, want %d", name, bases[0], materialTabIdleW)
 		}
 	}
 }
@@ -240,7 +188,7 @@ func assertWash(t *testing.T, tt *ui.Tester, what string, seg ui.Rect, dark, cho
 	}
 }
 
-// The view tabs sit on the sidebar's vibrancy: the chosen tab is a wash of ink
+// The view rows sit on the sidebar's vibrancy: the chosen row is a wash of ink
 // and the others are bare — no white pill, no opaque track — in both windows.
 func TestViewTabsAreAWashNotPaper(t *testing.T) {
 	root := gitFixture(t, "wash")
@@ -255,12 +203,13 @@ func TestViewTabsAreAWashNotPaper(t *testing.T) {
 			for i, r := range rects {
 				assertWash(t, tt, fmt.Sprintf("dark=%v, %s chosen, tab %q", dark, view.label, sidebarViews[i].label), r, dark, i == want)
 			}
-			// Nothing is drawn behind the strip either: no track.
+			// Nothing is drawn behind the rows either: no track, and the gap
+			// between two rows is the sidebar itself.
 			img := tt.Image()
 			y := rects[0].Y + rects[0].H/2
-			for _, gap := range []float32{sidebarGutter / 2, rects[len(rects)-1].X + rects[len(rects)-1].W + sidebarGutter/2} {
+			for _, gap := range []float32{sidebarGutter / 2, rects[0].X + rects[0].W + sidebarGutter/2} {
 				if d := luminance(img, gap, y) - luminance(img, 1, y); d < -2 || d > 2 {
-					t.Errorf("dark=%v, %s chosen: the strip has a track (%d at x=%.0f)", dark, view.label, d, gap)
+					t.Errorf("dark=%v, %s chosen: the rows have a track (%d at x=%.0f)", dark, view.label, d, gap)
 				}
 			}
 			saveEvidence(t, fmt.Sprintf("view-tabs-%s-%s", map[bool]string{false: "light", true: "dark"}[dark], view.label), tt)

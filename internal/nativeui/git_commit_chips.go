@@ -124,6 +124,13 @@ func (x gitChipIndex) chips(cm gitworkbench.CommitInfo, hidden map[string]bool) 
 	return out
 }
 
+// gitLaneColors are the chips' kind colours (the graph's lanes have their own
+// palette, gitGraphColor).
+var gitLaneColors = []ui.Color{
+	ui.Hex("#e9a134"), ui.Hex("#5da6ec"), ui.Hex("#65ba85"),
+	ui.Hex("#c68ae5"), ui.Hex("#e7858f"), ui.Hex("#e5ca68"),
+}
+
 // Chip tones: indexes into gitLaneColors (amber, blue, green, violet, rose).
 const (
 	chipToneBranch   = 0

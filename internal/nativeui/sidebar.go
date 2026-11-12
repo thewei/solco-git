@@ -168,6 +168,9 @@ func (s *Shell) commitsPane(c *ui.Context, pal *gdPalette) {
 		// wires to run unbroken (the compact All Commits list, 2026-10-14).
 		row := ui.Row(c).Gap(commitRowGap).Padding(0, 8).Radius(treeRowRadius).AlignItems(ui.Center).MinWidth(0)
 		muted, ref := t.TextMuted, pal.ref
+		// halo is the row's own paper, wash included: the graph rings its
+		// dot and its lines with it.
+		halo := t.Background
 		// A commit the checked-out branch does not contain (another branch's
 		// work, not merged in) rests in the muted colour, Fork-style.
 		unmerged := view.merged != nil && !view.merged[cm.Hash]
@@ -179,17 +182,21 @@ func (s *Shell) commitsPane(c *ui.Context, pal *gdPalette) {
 		case s.git.flashHash == cm.Hash:
 			// The commit a sidebar click just located.
 			row.Background(pal.match).TextColor(t.Text)
+			halo = pal.match.Over(t.Background)
 			muted, ref = t.TextMuted, t.Text
 		case current && focused:
 			row.Background(designTokens(t.Dark).SidebarSelectStrong).TextColor(t.Text)
+			halo = designTokens(t.Dark).SidebarSelectStrong.Over(t.Background)
 			muted, ref = t.TextMuted, t.Text
 		case current:
 			// Unfocused selection shares the sidebar's token so the same
 			// "this row is selected" tint reads identically across the
 			// tree, the commits list and the changes tree (F155).
 			row.Background(designTokens(t.Dark).SidebarSelect)
+			halo = designTokens(t.Dark).SidebarSelect.Over(t.Background)
 		case row.Hovered():
 			row.Background(designTokens(t.Dark).SidebarHover)
+			halo = designTokens(t.Dark).SidebarHover.Over(t.Background)
 		}
 		if row.Clicked() {
 			s.reviewCommit(cm.Hash)
@@ -249,11 +256,11 @@ func (s *Shell) commitsPane(c *ui.Context, pal *gdPalette) {
 		})
 		row.Children(func() {
 			graph := graphByHash[cm.Hash]
-			graphW := gitGraphRowWidth(graph)
+			graphW := gitGraphRowWidth(graph, view.lanes)
 			if filtering {
-				graphW = gitGraphWidthFor(1)
+				graphW = gitGraphDotsWidth(view.lanes, 1)
 			}
-			gitGraphGlyph(c, graph, graphW, filtering)
+			gitGraphGlyph(c, graph, view.lanes, graphW, halo, filtering)
 			gitCommitChips(c, chipIndex.chips(cm, hiddenRefs), ref, func(chip gitChip) {
 				// A chip opens its commit and shows where its ref lives in
 				// the sidebar.

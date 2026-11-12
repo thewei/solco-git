@@ -100,3 +100,5 @@ Logs are structured and size-bounded under MyGo's `PathLogs` (2 MiB active + 3 b
 [MIT](LICENSE) © 2026 Wilson.
 
 The rendered Markdown view links three Go modules that keep their own licenses (full texts ship in the module sources): `github.com/go-tex/math` v0.50.0 (BSD-3-Clause, © 2026 the go-tex/math authors; embeds **STIX Two Math**, SIL OFL 1.1, © 2001–2021 The STIX Fonts Project Authors, <https://github.com/stipub/stixfonts>), `tuios.dev/sketch` v0.4.0 (MIT, © 2026 kepano and Gaurav Gosain; embeds subsets of **Arimo** 1.33, SIL OFL 1.1, © 2026 The Arimo Project Authors, <https://github.com/googlefonts/Arimo>, and **Go Mono**, © 2016 Bigelow & Holmes Inc., BSD-3-Clause) and `golang.org/x/net` v0.59.0 (BSD-3-Clause, © The Go Authors).
+
+The commit graph's layout and drawing (`internal/nativeui/git_commit_graph.go`) follow [TanGit](https://github.com/FleetingEcho/TanGit) (MIT, © 2026 FleetingEcho), which in turn ports the pipe-set layout of [LazyGit](https://github.com/jesseduffield/lazygit) (`pkg/gui/presentation/graph`, MIT, © 2018 Jesse Duffield). The LazyGit command layer that `solco-gitkit`'s `engine` module links is MIT as well.

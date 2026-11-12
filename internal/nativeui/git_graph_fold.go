@@ -212,6 +212,7 @@ type gitCommitView struct {
 	shown  []gitworkbench.CommitInfo
 	counts map[string]int
 	graphs map[string]gitGraphRow
+	lanes  int // the widest row's lane count: every row spaces its lanes by it
 	// merged holds the commits the checked-out branch reaches; nil when no
 	// branch is checked out (detached or unreadable), so nothing reads as
 	// unmerged then.
@@ -267,6 +268,7 @@ func (s *Shell) commitView() *gitCommitView {
 	for i, cm := range v.shown {
 		v.graphs[cm.Hash] = rows[i]
 	}
+	v.lanes = gitGraphLaneCount(rows)
 	s.git.commitView = v
 	return v
 }

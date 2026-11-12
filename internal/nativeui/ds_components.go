@@ -72,7 +72,7 @@ func segmentFacePadded(c *ui.Context, tabs ui.SegmentedParts, i int, chosen bool
 // two-way switches add a hairline track, the view tabs none.
 //
 //	materialSegmentedTrack + materialSegmentFacePadded: a labeled switch
-//	materialTabStrip + materialTab: the view tabs (frame.go)
+//	materialNavTrack + materialNavRow: the view rows (frame.go)
 func materialFace(c *ui.Context, seg ui.Element, chosen bool) ui.Color {
 	t := c.Theme()
 	tokens := designTokens(t.Dark)
@@ -109,30 +109,19 @@ func materialSegmentFacePadded(c *ui.Context, tabs ui.SegmentedParts, i int, cho
 	return seg, materialFace(c, seg, chosen)
 }
 
-// The view tabs' metrics: the strip is as tall as a regular icon button, a tab
-// that shows only its glyph is that button's square (the padding is what is
-// left of the button around the glyph, so the glyph sits dead centre), and the
-// chosen tab takes the rest of the row.
-const (
-	materialTabHeight = gorexIconBtn
-	materialTabIdleW  = gorexIconBtn
-	materialTabPadX   = (gorexIconBtn - gorexIconGlyph) / 2
-)
-
-// materialTabStrip dresses the track of a tab strip on the sidebar: nothing —
-// the tabs sit side by side on the material, the chosen one carries the wash.
-func materialTabStrip(c *ui.Context, tabs ui.SegmentedParts, label string) {
-	tabs.Track.Label(label).AlignItems(ui.Stretch).Shrink(0).Gap(Spacing().XXS)
+// materialNavGroup is a column of materialNavRows: a radio group on the
+// material with nothing of its own — the chosen row carries the wash.
+func materialNavGroup(c *ui.Context, label string, rows func()) ui.Element {
+	return ui.RadioGroup(c, rows).Label(label).Gap(Spacing().XXS).AlignItems(ui.Stretch).Shrink(0)
 }
 
-// materialTab is one tab of a materialTabStrip: a button-high, row-cornered
-// segment that keeps its content centered; it returns the segment and the ink
-// for its content. The caller sizes it (Grow for the chosen tab, a Width for
-// the others) and fills it.
-func materialTab(c *ui.Context, tabs ui.SegmentedParts, i int, chosen bool, label string) (ui.Element, ui.Color) {
-	seg := tabs.Segment(i).Height(materialTabHeight).Padding(0, materialTabPadX).Gap(Spacing().S).
-		Radius(iconButtonRadius(materialTabHeight)).AlignItems(ui.Center).Justify(ui.Center).Label(label)
-	return seg, materialFace(c, seg, chosen)
+// materialNavRow is one row of a materialNavGroup choosing i into *selected: as
+// tall and as cornered as the sidebar's tree rows, glyph and name from the left
+// edge; it returns the row and the ink for its content. The caller fills it.
+func materialNavRow(c *ui.Context, selected *int, i int, label string, height float32) (ui.Element, ui.Color) {
+	row := ui.RadioBase(c, selected, i).Height(height).Padding(0, 8).Gap(Spacing().S).
+		Radius(treeRowRadius).AlignItems(ui.Center).Label(label)
+	return row, materialFace(c, row, *selected == i)
 }
 
 // settingsRow is one line of a settingsGroup: an optional lead (an icon or
