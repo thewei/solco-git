@@ -259,12 +259,12 @@ func (s *Shell) dropStash(ref string) {
 		}
 	}
 	s.openConfirm("git-drop-stash", ref, "Delete Stash “"+name+"”?",
-		"Delete stash from repository. The stashed changes are gone for good.")
+		"Solco Git keeps a recovery point: Repository ▸ Recovery… puts the stash back.")
 }
 
 func (s *Shell) deleteBranch(name string) {
 	s.openConfirm("git-delete-branch", name, "Delete Branch “"+name+"”?",
-		"Git refuses if it has unmerged commits.")
+		"Git refuses if it has unmerged commits. Repository ▸ Recovery… can make the branch again.")
 }
 
 // confirmMergeBranch only offers a non-rewriting, fast-forward-only merge.

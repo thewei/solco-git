@@ -88,3 +88,42 @@ func readFileT(t *testing.T, path string) string {
 	}
 	return string(b)
 }
+
+func TestDeletedBranchAndDroppedStashComeBackFromRecovery(t *testing.T) {
+	root := gitFixture(t, "recover-ref")
+	gitRun(t, root, "branch", "topic")
+	writeFile(t, root+"/README.md", "stash me\n")
+	gitRun(t, root, "stash", "push", "-q", "-m", "keep this")
+	w, pump := newTestWindow(t)
+	tt := newTester(w, 1280, 800, true)
+	sh := openAndLoad(t, w, pump, root)
+	settle(tt, pump, 3)
+
+	sh.deleteBranch("topic")
+	if !strings.Contains(sh.confirmMessage, "Recovery") {
+		t.Fatalf("branch confirmation says %q", sh.confirmMessage)
+	}
+	sh.confirmOpen = false
+	sh.runGitConfirm("git-delete-branch", "topic")
+	pump.until(t, "the branch delete", func() bool { return !sh.git.opBusy && gitRun(t, root, "branch", "--list", "topic") == "" })
+	sh.runGitConfirm("git-drop-stash", "stash@{0}")
+	pump.until(t, "the stash drop", func() bool { return !sh.git.opBusy && gitRun(t, root, "stash", "list") == "" })
+
+	sh.openRecoverySheet()
+	pump.until(t, "the list", func() bool { return !sh.gitMore.recovery.loading })
+	ops := sh.gitMore.recovery.ops
+	if len(ops) != 2 || ops[0].Kind != "stash-drop" || ops[1].Kind != "branch-delete" {
+		t.Fatalf("recovery list = %+v", ops)
+	}
+	settle(tt, pump, 2)
+	for _, op := range ops {
+		sh.recoverOperation(op)
+		pump.until(t, "the recovery", func() bool { return !sh.git.opBusy })
+	}
+	if gitRun(t, root, "branch", "--list", "topic") == "" {
+		t.Error("the branch did not come back")
+	}
+	if !strings.Contains(gitRun(t, root, "stash", "list"), "keep this") {
+		t.Error("the stash did not come back")
+	}
+}

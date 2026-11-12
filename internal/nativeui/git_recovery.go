@@ -61,7 +61,7 @@ func (s *Shell) recoverySheet(c *ui.Context) {
 	ui.Modal(c, &r.open, func() {
 		ui.Column(c).Width(640).MaxWidth(900).Height(480).MinHeight(240).MinWidth(0).Gap(Spacing().M).Children(func() {
 			modalTitle(c, "Recovery")
-			ui.Text(c, "Edits you discarded and files you deleted here, newest first. Recover puts them back unless they changed since.").
+			ui.Text(c, "Edits you discarded, files, branches and stashes you deleted here, newest first. Recover puts them back unless they changed since.").
 				FontSize(Typography().BodySmall).TextColor(t.TextMuted)
 			switch {
 			case r.loading:
@@ -119,6 +119,10 @@ func recoveryText(op gitworkbench.Operation) (kind, summary string) {
 		kind = "discard"
 	case gitworkbench.OpKindDeleteUntracked:
 		kind = "delete"
+	case gitworkbench.OpKindBranchDelete:
+		kind = "branch"
+	case gitworkbench.OpKindStashDrop:
+		kind = "stash"
 	default:
 		kind = op.Kind
 	}
@@ -140,6 +144,12 @@ func (s *Shell) recoverOperation(op gitworkbench.Operation) {
 	s.runGitOp("Recover", func(ctx context.Context, root string) (string, error) {
 		if err := s.git.runner.UndoOperation(ctx, root, op.ID); err != nil {
 			return "", err
+		}
+		switch op.Kind {
+		case gitworkbench.OpKindBranchDelete:
+			return "Recovered branch " + op.Name, nil
+		case gitworkbench.OpKindStashDrop:
+			return "Recovered the stash", nil
 		}
 		return "Recovered " + pluralFiles(len(op.Paths)), nil
 	})
