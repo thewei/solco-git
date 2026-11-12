@@ -168,7 +168,7 @@ type gapExpansion struct {
 // newGitService builds the shell-side orchestration over
 // solco-gitkit/gitworkbench.
 func newGitService() *gitService {
-	runner := &gitworkbench.Runner{Backend: gitBackend()}
+	runner := &gitworkbench.Runner{Backend: gitBackend(), Journal: true}
 	return &gitService{
 		runner:        runner,
 		cache:         gitworkbench.NewCache(runner),

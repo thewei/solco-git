@@ -180,18 +180,18 @@ func (s *Shell) unstageFiles(paths []string) {
 
 // discardChanges throws away worktree changes after the confirm dialog.
 // kind "git-discard" carries tracked paths, "git-delete-untracked" carries
-// untracked files (deleted, not recoverable — hence the confirmation).
+// untracked files (deleted; both keep a recovery point, see git_recovery.go).
 func (s *Shell) discardChanges(paths []string) {
 	tracked, untracked := s.splitTrackedUntracked(paths)
 	if len(tracked) > 0 {
 		s.openConfirm("git-discard", joinPathsTarget(tracked),
 			"Discard Changes in "+pluralFiles(len(tracked))+"?",
-			"This can't be undone.")
+			"Solco Git keeps a recovery point: Repository ▸ Recovery… puts the edits back.")
 	}
 	if len(untracked) > 0 {
 		s.openConfirm("git-delete-untracked", joinPathsTarget(untracked),
 			"Delete "+pluralFiles(len(untracked))+"?",
-			"Untracked files can't be recovered.")
+			"Solco Git keeps a recovery point: Repository ▸ Recovery… puts the files back.")
 	}
 }
 
