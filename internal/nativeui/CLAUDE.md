@@ -25,7 +25,7 @@ Git（复制自 Solco，随 `solco-gitkit` 演进）
 - `git_backend.go`：装到每个 `Runner.Backend` 的那一个 LazyGit `engine.Engine`（`SOLCOGIT_GIT_BACKEND=argv` 回到纯 argv 路径）；目前接管的能力见 solco-gitkit `engine/CLAUDE.md`。
 - `git_commit_graph.go`：Commits 的路线图（2026-11-12 起整体换成 TanGit / LazyGit 的画法，无开关）：LazyGit getNextPipes 的管道集布局经 TanGit 移植（车道向左收拢），VS Code 风格画法——两像素线贴设备像素、底色光晕、三次贝塞尔 S 弯、带环圆点；槽宽有上限，每行文字起点随该行用到的车道；引用芯片仍用 `git_commit_chips.go` 的 `gitLaneColors`，车道色是自己的 `gitGraphColor`。
 - `git_*.go`、`gd_*.go`、`surface.go`、`commit_surface.go`、`changes_panel.go`、`sidebar*.go`：Changes / Commits 的评审面（diff 行、行级暂存、图谱、ref 树、Stash/Reflog/补丁对话框、sequencer 状态条）。
-- `git_undo.go`：Undo / Redo 的界面一侧（Repository 菜单 + 窗口内 ⌘Z / ⇧⌘Z，文本框拿着焦点时输入框先吃键）：先读计划再出确认框写明将被撤销的动作，确认的是它的身份串，期间 HEAD 被别人动了就拒绝；底层是 solco-gitkit `reflog_undo.go`。
+- `git_undo.go`：Undo / Redo 的界面一侧（Repository 菜单，⌥⌘Z / ⇧⌥⌘Z；⌘Z 是 Edit 菜单的文本撤销，框架把它交给有焦点的输入框，视图收不到，所以不占用）：先读计划再出确认框写明将被撤销的动作，确认的是它的身份串，期间 HEAD 被别人动了就拒绝；底层是 solco-gitkit `reflog_undo.go`。
 - `commit_tree.go`：Fork 的 File Tree——提交评审里 Diff | Tree 切换，按提交看整棵树（读 `ListTree`/`ReadBlob`，只读）。
 - `multi_push.go`：Push Multiple…——一次推多个分支与标签（`ReadPushOffer`/`PushMany`），分叉的标为受阻，永不强推。
 - `image_compare.go`：图片改动的 2-up / Swipe / Onion 对比，画在已解码位图上。
@@ -48,7 +48,7 @@ UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差�
 - `staged_pane_test.go`：Staged 列表的高度——分隔条真的改它（旧的 Height 被 Grow 的 0% basis 吞掉，两个列表等分）、一个暂存文件不把 Unstaged 行挤到 Staged 头后面。
 - `view_tabs_test.go`：侧栏三行视图的合同——Changes / Commits / Files 自上而下三行、整行宽、名称在 200/252/400 三种侧栏宽度下都画出；Changes 的三位数计数贴行尾且完整；选中是侧栏选中色的一层淡墨整行铺满、不是白纸（明暗两种外观），Files 树的 Changed | All 与搜索的 Files | Content 同样；点、方向键、悬停淡墨与提示（名称 + 计数 + ⌘1–3）。
 - `git_commit_graph_test.go`：路线图的合同——布局（线性、分叉/合并、车道收拢、多尖端与窗口外的父、分支线色沿线不变）、几何有界（槽宽不超上限、每行宽度随该行用到的车道）、画法（点与线真的画在车道上、车道之外是纸）、真实合并仓库经真实读取后画成两车道并渲染；变异（丢颜色传递、关掉收拢、合并标记）各自变红已核对。
-- `git_undo_test.go`：先问后动（确认前 HEAD 不动）、确认期间 HEAD 被动过则拒绝、没有可撤销时只给提示、⌘Z / ⇧⌘Z 走同一条确认、文本输入框拿着焦点时 ⌘Z 不触发 Git 撤销（并核对过没有焦点时会触发）。
+- `git_undo_test.go`：先问后动（确认前 HEAD 不动）、确认期间 HEAD 被动过则拒绝、没有可撤销时只给提示、Repository 菜单两项带 ⌥⌘Z 系加速键（不占 Edit 菜单的 ⌘Z）且各开对应确认。
 - `window_menu_test.go`：应用菜单合同——About 之后才是 Check for Updates…（main 接上更新器才有，每次重装菜单拿新菜单项），Settings… 与 Quit 不丢。
 - `window_workspaces_test.go`：工作区下拉与管理的合同——chip 始终是当前工作区；搜索（过滤、↑↓、↵ 切换并刷新、无命中时 ↵ 什么也不做）、最大高度与滚动、行右键移除、设置里的排序/移除/Add Workspace…（添加不抢前台）、每一种打开方式都加入清单、旧版 `tabs` 键读成工作区、清单上限、共享图标按钮是 Tab 停靠点。
 - `window_landing_test.go`：冷启动经链接落点——首读之后列表顶上是被点名文件的卡，内容分批读到后也不动，过了揭示窗口选中行仍是它。

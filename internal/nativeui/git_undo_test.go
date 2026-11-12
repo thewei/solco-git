@@ -2,7 +2,7 @@ package nativeui
 
 /**
  * [INPUT]: git_undo.go、window_view.go 的 ⌘Z / ⇧⌘Z、Repository 菜单、真实临时仓库
- * [OUTPUT]: 界面一侧 Undo / Redo 的合同：请求先出确认框并写明动作、确认后才动 HEAD、HEAD 在确认期间被别人动了就拒绝、没有可撤销时只给提示、⌘Z / ⇧⌘Z 走同一条路、文本输入框拿着焦点时 ⌘Z 不触发 Git 撤销
+ * [OUTPUT]: 界面一侧 Undo / Redo 的合同：请求先出确认框并写明动作、确认后才动 HEAD、HEAD 在确认期间被别人动了就拒绝、没有可撤销时只给提示、Repository 菜单两项带 ⌥⌘Z 系加速键（不占 Edit 菜单的 ⌘Z）且各开对应确认
  * [POS]: 2026-11-12 决定第 (3) 条 Undo / Redo 的防线；底层合同在 solco-gitkit gitworkbench/reflog_undo_test.go
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -10,9 +10,8 @@ package nativeui
 import (
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/egoist/mygo/ui"
+	mygo "github.com/egoist/mygo"
 )
 
 func gitHead(t *testing.T, root string) string {
@@ -84,56 +83,50 @@ func TestUndoWithNothingToUndoOnlySaysSo(t *testing.T) {
 	}
 }
 
-func TestUndoKeysOpenTheSameConfirmation(t *testing.T) {
-	root := gitFixture(t, "undo-keys")
-	gitRun(t, root, "commit", "-q", "-am", "Keyed")
+// The Repository menu carries both, with accelerators that are not the Edit
+// menu's ⌘Z / ⇧⌘Z (those reach a focused text field as its own undo, so a view
+// never sees them), and choosing them asks the same confirmations.
+func TestRepositoryMenuUndoAndRedo(t *testing.T) {
+	root := gitFixture(t, "undo-menu")
+	gitRun(t, root, "commit", "-q", "-am", "Menued")
 	w, pump := newTestWindow(t)
 	tt := newTester(w, 1280, 800, true)
 	sh := openAndLoad(t, w, pump, root)
 	settle(tt, pump, 3)
 
-	tt.Key(ui.Super, ui.KeyZ)
-	pump.until(t, "the confirmation from ⌘Z", func() bool { settle(tt, pump, 1); return sh.confirmOpen })
+	find := func(label string) *mygo.MenuItem {
+		for _, menu := range w.MenuBar().Items() {
+			for _, item := range menu.Submenu {
+				if item.Label == label {
+					return item
+				}
+			}
+		}
+		t.Fatalf("no menu item %q", label)
+		return nil
+	}
+	undo, redo := find("Undo Git Action…"), find("Redo Git Action…")
+	if undo.Accelerator != accelUndoGit || redo.Accelerator != accelRedoGit {
+		t.Fatalf("accelerators = %q, %q", undo.Accelerator, redo.Accelerator)
+	}
+	for _, edit := range []string{"CmdOrCtrl+Z", "Shift+CmdOrCtrl+Z"} {
+		if undo.Accelerator == edit || redo.Accelerator == edit {
+			t.Fatalf("a Git undo item took the Edit menu's %s", edit)
+		}
+	}
+	if undo.Disabled || redo.Disabled {
+		t.Fatal("the items are disabled with a repository open")
+	}
+
+	undo.Click(undo, nil)
+	pump.until(t, "the undo confirmation", func() bool { return sh.confirmOpen })
 	if sh.confirmKind != confirmUndo {
-		t.Fatalf("⌘Z opened %q", sh.confirmKind)
+		t.Fatalf("Undo opened %q", sh.confirmKind)
 	}
 	sh.confirmOpen = false
-	// Take the commit back so a redo exists, then ⇧⌘Z must ask for it.
 	sh.runGitConfirm(sh.confirmKind, sh.confirmTarget)
 	pump.until(t, "the undo", func() bool { return !sh.git.opBusy && gitRun(t, root, "diff", "--cached", "--name-only") != "" })
 	settle(tt, pump, 3)
-	tt.Key(ui.Super|ui.Shift, ui.KeyZ)
-	pump.until(t, "the confirmation from ⇧⌘Z", func() bool { settle(tt, pump, 1); return sh.confirmOpen })
-	if sh.confirmKind != confirmRedo {
-		t.Fatalf("⇧⌘Z opened %q", sh.confirmKind)
-	}
-}
-
-// A text field that has the focus takes ⌘Z for its own undo: the commit
-// search must not open a Git undo.
-func TestUndoKeyBelongsToAFocusedTextField(t *testing.T) {
-	root := gitFixture(t, "undo-field")
-	gitRun(t, root, "commit", "-q", "-am", "Fielded")
-	w, pump := newTestWindow(t)
-	tt := newTester(w, 1280, 800, true)
-	sh := openAndLoad(t, w, pump, root)
-	sh.showView(viewCommits)
-	pump.until(t, "the commit list", func() bool { return len(sh.git.commits) > 0 })
-	settle(tt, pump, 3)
-	if err := tt.Click("Search commit list"); err != nil {
-		t.Fatal(err)
-	}
-	settle(tt, pump, 2)
-	tt.Type("Fiel")
-	settle(tt, pump, 2)
-	if sh.gitCommitFilter != "Fiel" {
-		t.Fatalf("the search field did not take the text: %q", sh.gitCommitFilter)
-	}
-	tt.Key(ui.Super, ui.KeyZ)
-	settle(tt, pump, 3)
-	time.Sleep(600 * time.Millisecond) // the plan is read off the UI thread; give a wrongly fired one time to land
-	pump.drain()
-	if sh.confirmOpen {
-		t.Fatalf("⌘Z in a focused text field opened %q", sh.confirmKind)
-	}
+	redo.Click(redo, nil)
+	pump.until(t, "the redo confirmation", func() bool { return sh.confirmOpen && sh.confirmKind == confirmRedo })
 }

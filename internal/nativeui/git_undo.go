@@ -3,7 +3,7 @@ package nativeui
 /**
  * [INPUT]: shell.go（git 状态、applyOnUI、pendingToast）、dialogs.go（openConfirm / runGitConfirm）、gitworkbench.Runner.PlanReplay / Replay
  * [OUTPUT]: requestReplay（预览 → 确认 → 执行的撤销 / 重做）、replayConfirmText（确认框的标题与说明）、runReplay
- * [POS]: 2026-11-12 决定第 (3) 条 Undo / Redo 的界面一侧：Repository 菜单的 Undo / Redo 与窗口内 ⌘Z / ⇧⌘Z（文本输入框拿着焦点时输入框先吃键）；确认框写明将被撤销的那一个动作，确认的是它的身份串，期间别的 Git 客户端动了 HEAD 就拒绝，不撤销用户没看过的东西
+ * [POS]: 2026-11-12 决定第 (3) 条 Undo / Redo 的界面一侧：Repository 菜单的 Undo / Redo Git Action（⌥⌘Z / ⇧⌥⌘Z；⌘Z / ⇧⌘Z 是 Edit 菜单的文本撤销，框架把它当编辑命令交给有焦点的输入框，视图收不到那个键，所以不用）；确认框写明将被撤销的那一个动作，确认的是它的身份串，期间别的 Git 客户端动了 HEAD 就拒绝，不撤销用户没看过的东西
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 
