@@ -110,6 +110,9 @@ func (s *Shell) gitActionItems(m *ui.Menu) {
 	if m.Item("Recovery…").Chosen() {
 		s.openRecoverySheet()
 	}
+	if m.Item("Command Log…").Chosen() {
+		s.openCommandLog()
+	}
 	if m.Item("Add Submodule…").Disabled(s.git.opBusy || busySequencer).Chosen() {
 		s.openAddSubmoduleDialog()
 	}

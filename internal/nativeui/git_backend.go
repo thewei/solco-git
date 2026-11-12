@@ -17,7 +17,11 @@ import (
 
 // sharedEngine is one Engine for the whole app: it keeps a LazyGit session
 // per repository root, so every workspace's service reuses the same ones.
-var sharedEngine = sync.OnceValue(func() gitworkbench.Backend { return engine.New() })
+var sharedEngine = sync.OnceValue(func() gitworkbench.Backend {
+	e := engine.New()
+	e.Commands = sharedCommandLog()
+	return e
+})
 
 // gitBackend is the Backend a Runner here is given. SOLCOGIT_GIT_BACKEND=argv
 // is the way back to the plain `git` path (a debugging and rollback switch,

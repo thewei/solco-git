@@ -125,6 +125,7 @@ func (w *Window) MenuBar() *mygo.Menu {
 		repo("Save Changes as Patch…", "", func(sh *Shell) { sh.saveWorkingPatch() }),
 		repo("Reflog…", "", func(sh *Shell) { sh.openReflogSheet() }),
 		repo("Recovery…", "", func(sh *Shell) { sh.openRecoverySheet() }),
+		repo("Command Log…", "", func(sh *Shell) { sh.openCommandLog() }),
 		mygo.Separator(),
 		repo("Undo Git Action…", accelUndoGit, func(sh *Shell) { sh.requestReplay(false) }),
 		repo("Redo Git Action…", accelRedoGit, func(sh *Shell) { sh.requestReplay(true) }),
