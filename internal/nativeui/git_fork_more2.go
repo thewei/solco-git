@@ -75,7 +75,7 @@ func (s *Shell) applyPatchFile() {
 	}
 	go func() {
 		paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{
-			Parent: s.win, Title: "Choose a patch to apply", Message: "The patch is applied to the working tree only — nothing is staged or committed.",
+			Parent: s.win, Title: "Choose a patch to apply", Message: "The patch is applied to the working tree only — nothing is staged or committed. Repository ▸ Recovery… can take it back.",
 		})
 		s.applyOnUI(func() {
 			if err != nil || len(paths) == 0 || paths[0] == "" {
@@ -250,7 +250,7 @@ func (s *Shell) confirmDropAllStashes() {
 		return
 	}
 	s.openConfirm("git-stash-clear", "", "Drop All "+itoa(len(s.git.stashes))+" Stashes?",
-		"Every stashed change is deleted permanently.")
+		"Solco Git keeps a recovery point: Repository ▸ Recovery… puts all of them back.")
 }
 
 type reflogSheetState struct {

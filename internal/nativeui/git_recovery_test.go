@@ -8,6 +8,7 @@ package nativeui
  */
 
 import (
+	"context"
 	"os"
 	"strings"
 	"testing"
@@ -125,5 +126,57 @@ func TestDeletedBranchAndDroppedStashComeBackFromRecovery(t *testing.T) {
 	}
 	if !strings.Contains(gitRun(t, root, "stash", "list"), "keep this") {
 		t.Error("the stash did not come back")
+	}
+}
+
+func TestAppliedPatchAndClearedStashesComeBackFromRecovery(t *testing.T) {
+	root := gitFixture(t, "recover-patch")
+	writeFile(t, root+"/README.md", "patched\n")
+	patch := gitRun(t, root, "diff")
+	gitRun(t, root, "checkout", "--", "README.md")
+	patchFile := t.TempDir() + "/p.patch"
+	writeFile(t, patchFile, patch+"\n")
+	original := readFileT(t, root+"/README.md")
+	for _, name := range []string{"one", "two"} {
+		writeFile(t, root+"/README.md", name+"\n")
+		gitRun(t, root, "stash", "push", "-q", "-m", name)
+	}
+	w, pump := newTestWindow(t)
+	tt := newTester(w, 1280, 800, true)
+	sh := openAndLoad(t, w, pump, root)
+	settle(tt, pump, 3)
+
+	sh.runGitOp("Apply Patch", func(ctx context.Context, root string) (string, error) {
+		return "", sh.git.runner.ApplyPatch(ctx, root, patchFile)
+	})
+	pump.until(t, "the apply", func() bool { return !sh.git.opBusy && readFileT(t, root+"/README.md") == "patched\n" })
+	pump.until(t, "the stash list", func() bool { return len(sh.git.stashes) == 2 })
+	sh.confirmDropAllStashes()
+	if !strings.Contains(sh.confirmMessage, "Recovery") {
+		t.Fatalf("drop-all confirmation says %q", sh.confirmMessage)
+	}
+	sh.confirmOpen = false
+	sh.runGitConfirm("git-stash-clear", "")
+	pump.until(t, "the clear", func() bool { return !sh.git.opBusy && gitRun(t, root, "stash", "list") == "" })
+
+	sh.openRecoverySheet()
+	pump.until(t, "the list", func() bool { return !sh.gitMore.recovery.loading })
+	ops := sh.gitMore.recovery.ops
+	if len(ops) != 2 || ops[0].Kind != "stash-clear" || ops[1].Kind != "apply-patch" {
+		t.Fatalf("recovery list = %+v", ops)
+	}
+	if _, summary := recoveryText(ops[1]); !strings.Contains(summary, "p.patch") {
+		t.Errorf("the patch entry reads %q", summary)
+	}
+	settle(tt, pump, 2)
+	for _, op := range ops {
+		sh.recoverOperation(op)
+		pump.until(t, "the recovery", func() bool { return !sh.git.opBusy })
+	}
+	if got := readFileT(t, root+"/README.md"); got != original {
+		t.Errorf("README.md = %q, want the pre-patch content", got)
+	}
+	if list := gitRun(t, root, "stash", "list"); !strings.Contains(list, "one") || !strings.Contains(list, "two") {
+		t.Errorf("stash list = %q", list)
 	}
 }

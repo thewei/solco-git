@@ -121,8 +121,10 @@ func recoveryText(op gitworkbench.Operation) (kind, summary string) {
 		kind = "delete"
 	case gitworkbench.OpKindBranchDelete:
 		kind = "branch"
-	case gitworkbench.OpKindStashDrop:
+	case gitworkbench.OpKindStashDrop, gitworkbench.OpKindStashClear:
 		kind = "stash"
+	case gitworkbench.OpKindApplyPatch:
+		kind = "patch"
 	default:
 		kind = op.Kind
 	}
@@ -133,6 +135,9 @@ func recoveryText(op gitworkbench.Operation) (kind, summary string) {
 		summary = op.Paths[0]
 	default:
 		summary = op.Paths[0] + " and " + itoa(len(op.Paths)-1) + " more"
+	}
+	if op.Kind == gitworkbench.OpKindApplyPatch {
+		summary = op.Name + " · " + pluralFiles(len(op.Paths))
 	}
 	if op.Status == gitworkbench.OpStatusFailed {
 		summary += " (stopped part-way)"
@@ -150,6 +155,10 @@ func (s *Shell) recoverOperation(op gitworkbench.Operation) {
 			return "Recovered branch " + op.Name, nil
 		case gitworkbench.OpKindStashDrop:
 			return "Recovered the stash", nil
+		case gitworkbench.OpKindStashClear:
+			return "Recovered " + op.Name, nil
+		case gitworkbench.OpKindApplyPatch:
+			return "Took back " + op.Name, nil
 		}
 		return "Recovered " + pluralFiles(len(op.Paths)), nil
 	})
