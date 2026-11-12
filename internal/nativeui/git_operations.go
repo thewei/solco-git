@@ -594,6 +594,10 @@ func (s *Shell) runGitConfirm(kind, target string) {
 			}
 			return "Reverted commit " + target[:8], nil
 		})
+	case confirmUndo:
+		s.runReplay(false, target)
+	case confirmRedo:
+		s.runReplay(true, target)
 	case "git-undo-commit":
 		s.runGitOp("Undo Commit", func(ctx context.Context, root string) (string, error) {
 			if err := s.git.runner.UndoLastCommit(ctx, root); err != nil {

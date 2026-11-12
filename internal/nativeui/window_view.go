@@ -115,6 +115,17 @@ func (w *Window) shortcuts(c *ui.Context) {
 	if c.Shortcut(sidebarToggleBinding.Modifiers, sidebarToggleBinding.Key) {
 		w.toggleSidebar()
 	}
+	// Redo first: ⇧⌘Z also satisfies a bare ⌘Z check on some key paths.
+	switch {
+	case c.Shortcut(redoBinding.Modifiers, redoBinding.Key):
+		if sh := w.activeShell(); sh != nil {
+			sh.requestReplay(true)
+		}
+	case c.Shortcut(undoBinding.Modifiers, undoBinding.Key):
+		if sh := w.activeShell(); sh != nil {
+			sh.requestReplay(false)
+		}
+	}
 }
 
 // toasts flushes what background lanes queued: the window's own notice and

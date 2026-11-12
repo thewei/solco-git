@@ -53,6 +53,7 @@ var gitConfirmActions = map[string]string{
 	"git-delete-branch": "Delete", "git-delete-remote-branch": "Delete", "git-delete-tag": "Delete", "git-delete-remote-tag": "Delete",
 	"git-merge-ff": "Merge", "git-merge-no-ff": "Merge", "git-merge-squash": "Squash", "git-rebase": "Rebase",
 	"git-cherry-pick": "Cherry-pick", "git-revert-commit": "Revert", "git-undo-commit": "Undo", "git-sequencer-abort": "Abort",
+	"git-replay-undo": "Undo", "git-replay-redo": "Redo",
 	"git-checkout-detached": "Check Out", "git-checkout-remote": "Check Out", "git-restore-file": "Restore",
 	"git-remove-worktree": "Remove", "git-remove-submodule": "Remove", "git-remove-remote": "Remove",
 }

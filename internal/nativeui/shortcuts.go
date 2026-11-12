@@ -26,6 +26,14 @@ type shortcutBinding struct {
 // Control-Tab are menu items).
 var sidebarToggleBinding = shortcutBinding{Modifiers: ui.Super, Key: ui.KeyB}
 
+// ⌘Z / ⇧⌘Z undo and redo the last Git action. They are in-window keys, not
+// accelerators: a text field that has the focus takes ⌘Z for its own undo first,
+// which a menu accelerator would steal.
+var (
+	undoBinding = shortcutBinding{Modifiers: ui.Super, Key: ui.KeyZ}
+	redoBinding = shortcutBinding{Modifiers: ui.Super | ui.Shift, Key: ui.KeyZ}
+)
+
 // The menu bar's accelerators.
 const (
 	accelChanges       = "CmdOrCtrl+1"
