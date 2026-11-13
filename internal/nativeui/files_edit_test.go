@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -176,12 +177,12 @@ func TestUnsavedEditsAreAskedAboutBeforeAGitWrite(t *testing.T) {
 	_, pump, sh, tt, path := editShell(t, map[string][]byte{"a.txt": []byte("one\n")}, "a.txt")
 	sh.toggleEditing()
 	typeAtEnd(sh, "two\n")
-	ran := 0
-	op := func(ctx context.Context, root string) (string, error) { ran++; return "", nil }
+	var ran atomic.Int32
+	op := func(ctx context.Context, root string) (string, error) { ran.Add(1); return "", nil }
 
 	// An operation that never writes a tracked file does not ask.
 	sh.runGitOp("Fetch", op)
-	pump.until(t, "Fetch ran", func() bool { return ran == 1 })
+	pump.until(t, "Fetch ran", func() bool { return ran.Load() == 1 })
 	if sh.edit.askOpen {
 		t.Fatal("Fetch needs no question")
 	}
@@ -189,8 +190,8 @@ func TestUnsavedEditsAreAskedAboutBeforeAGitWrite(t *testing.T) {
 	// One that may rewrite the working tree asks, and runs nothing yet.
 	sh.runGitOp("Check Out", op)
 	settle(tt, pump, 3)
-	if ran != 1 || !sh.edit.askOpen {
-		t.Fatalf("Check Out waits for the answer: ran=%d ask=%v", ran, sh.edit.askOpen)
+	if ran.Load() != 1 || !sh.edit.askOpen {
+		t.Fatalf("Check Out waits for the answer: ran=%d ask=%v", ran.Load(), sh.edit.askOpen)
 	}
 	for _, want := range []string{"Save changes to “a.txt”?", "Save and Continue", "Discard Edits", "Cancel"} {
 		if !tt.HasText(want) {
@@ -199,8 +200,8 @@ func TestUnsavedEditsAreAskedAboutBeforeAGitWrite(t *testing.T) {
 	}
 	tt.Click("Cancel")
 	settle(tt, pump, 3)
-	if ran != 1 || sh.edit.askOpen || !sh.fileDirty() || read(t, path) != "one\n" {
-		t.Fatalf("Cancel changes nothing: ran=%d ask=%v dirty=%v disk=%q", ran, sh.edit.askOpen, sh.fileDirty(), read(t, path))
+	if ran.Load() != 1 || sh.edit.askOpen || !sh.fileDirty() || read(t, path) != "one\n" {
+		t.Fatalf("Cancel changes nothing: ran=%d ask=%v dirty=%v disk=%q", ran.Load(), sh.edit.askOpen, sh.fileDirty(), read(t, path))
 	}
 
 	// Save and Continue writes first, then runs.
@@ -208,7 +209,7 @@ func TestUnsavedEditsAreAskedAboutBeforeAGitWrite(t *testing.T) {
 	settle(tt, pump, 3)
 	tt.Click("Save and Continue")
 	settle(tt, pump, 3)
-	pump.until(t, "Check Out ran", func() bool { return ran == 2 })
+	pump.until(t, "Check Out ran", func() bool { return ran.Load() == 2 })
 	if read(t, path) != "one\ntwo\n" || sh.fileDirty() {
 		t.Fatalf("saved before the operation: disk=%q dirty=%v", read(t, path), sh.fileDirty())
 	}
@@ -219,7 +220,7 @@ func TestUnsavedEditsAreAskedAboutBeforeAGitWrite(t *testing.T) {
 	settle(tt, pump, 3)
 	tt.Click("Discard Edits")
 	settle(tt, pump, 3)
-	pump.until(t, "Reset ran", func() bool { return ran == 3 })
+	pump.until(t, "Reset ran", func() bool { return ran.Load() == 3 })
 	if read(t, path) != "one\ntwo\n" || sh.fileDirty() || sh.rightPanel.nativeCode.Buffer.String() != "one\ntwo\n" {
 		t.Fatalf("discarded: disk=%q buffer=%q", read(t, path), sh.rightPanel.nativeCode.Buffer.String())
 	}
