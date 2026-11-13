@@ -216,7 +216,7 @@ func (s *Shell) lspFormatThen(after func()) {
 			switch {
 			case after != nil:
 				if !moved && err == nil && len(edits) > 0 {
-					applyServerEdits(buf, edits)
+					s.applyServerEdits(buf, edits)
 				}
 				after()
 			case moved:
@@ -226,7 +226,7 @@ func (s *Shell) lspFormatThen(after func()) {
 			case len(edits) == 0:
 				s.pendingToast = "Already formatted."
 			default:
-				applyServerEdits(buf, edits)
+				s.applyServerEdits(buf, edits)
 				s.pendingToast = "Formatted."
 			}
 		})
@@ -245,13 +245,17 @@ func (s *Shell) saveRequested() {
 }
 
 // applyServerEdits applies a server's edits to the buffer as one undo step.
-func applyServerEdits(buf *editor.Buffer, edits []lsp.TextEdit) {
+func (s *Shell) applyServerEdits(buf *editor.Buffer, edits []lsp.TextEdit) {
 	bes := lsp.ByteEdits(buf.String(), edits)
 	es := make([]editor.Edit, len(bes))
 	for i, e := range bes {
 		es[i] = editor.Edit{Start: e.Start, End: e.End, Text: e.Text}
 	}
 	buf.Edit(es...)
+	// The list's word start and filter belong to the text that was rewritten.
+	if code := s.rightPanel.nativeCode; code != nil && code.Buffer == buf {
+		code.ShowCompletions(0, nil)
+	}
 }
 
 // lspFailure is what to tell the user about a refused or failed request.
@@ -414,7 +418,7 @@ func (s *Shell) lspRenameApply(job *lspRenameJob) {
 		wrote = append(wrote, w.path)
 	}
 	if len(open) > 0 {
-		applyServerEdits(job.buf, open)
+		s.applyServerEdits(job.buf, open)
 	}
 	if s.lsp.mgr != nil && len(wrote) > 0 {
 		s.lsp.mgr.FilesChanged(wrote)

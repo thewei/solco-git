@@ -92,6 +92,23 @@ func TestFormatIsOneUndoStepAndWritesNothing(t *testing.T) {
 	framesUntil(t, tt, pump, "the note", func() bool { return tt.HasText("Already formatted") })
 }
 
+// A format rewrites the text under an open completion list: the list's word
+// start and filter belong to the old text, so it is closed.
+func TestAFormatClosesAnOpenCompletionList(t *testing.T) {
+	pump, sh, tt, _, _ := editableGo(t, map[string][]byte{"a.go": []byte("package a\n\n  var x = fmt.Pri\n")})
+	code := sh.rightPanel.nativeCode
+	off := strings.Index(code.Buffer.String(), "Pri") + 3
+	code.Select(off, off)
+	code.OnCompletion(editor.CompletionRequest{Offset: off, Prefix: "Pri", Version: code.Buffer.Version()})
+	framesUntil(t, tt, pump, "the list", func() bool { return tt.HasText("Println") })
+	sh.lspFormat()
+	framesUntil(t, tt, pump, "the formatted text", func() bool { return strings.Contains(code.Buffer.String(), "\tvar x") })
+	settle(tt, pump, 3)
+	if tt.HasText("Println") {
+		t.Error("the completion list is still open over the reformatted text")
+	}
+}
+
 func renameAtDo(t *testing.T, sh *Shell, path string) {
 	t.Helper()
 	code := sh.rightPanel.nativeCode
