@@ -416,6 +416,9 @@ func (s *Shell) reviewCommitAs(hash string, compare bool) {
 		return
 	}
 	s.git.compare = compare
+	if s.patch.commit != hash {
+		s.clearPatchSelection()
+	}
 	root := s.git.root
 	isStash := slices.ContainsFunc(s.git.stashes, func(st gitworkbench.Stash) bool { return st.Hash == hash })
 	s.git.source = gdSourceCommit

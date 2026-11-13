@@ -41,6 +41,8 @@ func (s *Shell) gdDiffSurface(c *ui.Context) {
 	s.gdSetFiles()
 	if !s.gdReviewingCommit() {
 		s.gitSequencerBanner(c)
+	} else {
+		s.patchBar(c)
 	}
 
 	find := ui.FindBar(c, &s.git.gdFinding, &s.git.gdQuery, len(s.git.gdMatches), &s.git.gdMatch).Label("Find in diffs")
@@ -476,6 +478,10 @@ func (s *Shell) gdFileHeader(c *ui.Context, pal *gdPalette, idx int, f *gdFile) 
 				ui.Text(c, "-"+gdThousands(dels)).Font(gdCodeFont()).FontSize(Typography().BodySmall).FontWeight(WeightSemibold).TextColor(pal.delText)
 			})
 		}
+		if badge := s.patchBadge(cf.Path); badge != "" && s.gdReviewingCommit() {
+			ui.Text(c, badge).FontSize(Typography().BodySmall).FontWeight(WeightSemibold).Padding(4, 9).Radius(Radius().Pill).
+				Background(t.Accent.Alpha(0.15)).TextColor(t.Accent).Shrink(0)
+		}
 		if cf.Generated {
 			ui.Text(c, "Generated").FontSize(Typography().BodySmall).FontWeight(WeightSemibold).Padding(4, 9).Radius(Radius().Pill).
 				Background(pal.ref.Alpha(0.15)).TextColor(pal.ref).Shrink(0)
@@ -714,7 +720,7 @@ func (s *Shell) gdLineCell(c *ui.Context, pal *gdPalette, f *gdFile, r *gdRow, l
 	}
 	cell := ui.Row(c).Grow(1).MinWidth(0).AlignItems(ui.Stretch).Background(bg)
 	_, stageable := s.gdStageSide(f)
-	stageable = stageable && ls.hunk >= 0 && ls.index >= 0 && ls.kind != gitworkbench.KindContext
+	stageable = (stageable || s.gdPatchPickable(f)) && ls.hunk >= 0 && ls.index >= 0 && ls.kind != gitworkbench.KindContext
 	if s.gdIsSelectedLine(f, ls) || (stageable && s.gdPicked(f, int(ls.hunk), int(ls.index))) {
 		cell.Background(gdBlend(bg, pal.selected))
 		gutterBg = gdBlend(gutterBg, pal.selected)

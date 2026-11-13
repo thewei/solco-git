@@ -25,6 +25,8 @@ type gitMoreState struct {
 	reflog    reflogSheetState
 	recovery  recoverySheetState
 	commands  commandLogState
+	history   historySheetState
+	patchDest patchDestState
 	conflict  conflictSheetState
 	submodule submoduleDialogState
 	stash     stashDialogState
@@ -746,6 +748,8 @@ func (s *Shell) gitMoreDialogs(c *ui.Context) {
 	s.reflogSheet(c)
 	s.recoverySheet(c)
 	s.commandLogSheet(c)
+	s.historySheet(c)
+	s.patchDestSheet(c)
 	s.conflictSheet(c)
 	s.submoduleDialog(c)
 	s.stashDialog(c)
@@ -778,6 +782,7 @@ func (s *Shell) gdFileLogItems(m *ui.Menu, cf *gitworkbench.ChangeFile) {
 		s.openFileSheet("blame", cf.Path, rev)
 	}
 	if commit {
+		s.patchItems(m, cf)
 		if m.Item("Restore File from This Commit…").Disabled(s.git.opBusy || (deleted && !s.git.compare)).Chosen() {
 			s.confirmRestoreFile(s.git.commitHash, cf.Path)
 		}

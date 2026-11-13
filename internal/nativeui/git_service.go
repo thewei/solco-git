@@ -349,6 +349,8 @@ func (s *Shell) resetGitContextState() {
 	s.git.remotes, s.git.submodules = nil, nil
 	s.git.stashes = nil
 	s.git.commits = nil
+	s.clearCommitChoice()
+	s.clearPatchSelection()
 	s.git.graphLimit, s.git.locateHash, s.git.flashHash = 0, "", ""
 	s.git.source = gdSourceWorktree
 	s.git.commitHash = ""

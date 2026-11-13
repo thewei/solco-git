@@ -184,6 +184,11 @@ func (s *Shell) commitsPane(c *ui.Context, pal *gdPalette) {
 			row.Background(pal.match).TextColor(t.Text)
 			halo = pal.match.Over(t.Background)
 			muted, ref = t.TextMuted, t.Text
+		case s.commitChosen(cm.Hash):
+			// the ⌘ / ⇧ choice a history rewrite acts on
+			row.Background(designTokens(t.Dark).SidebarSelectStrong).TextColor(t.Text)
+			halo = designTokens(t.Dark).SidebarSelectStrong.Over(t.Background)
+			muted, ref = t.TextMuted, t.Text
 		case current && focused:
 			row.Background(designTokens(t.Dark).SidebarSelectStrong).TextColor(t.Text)
 			halo = designTokens(t.Dark).SidebarSelectStrong.Over(t.Background)
@@ -199,7 +204,9 @@ func (s *Shell) commitsPane(c *ui.Context, pal *gdPalette) {
 			halo = designTokens(t.Dark).SidebarHover.Over(t.Background)
 		}
 		if row.Clicked() {
-			s.reviewCommit(cm.Hash)
+			if s.pickCommit(entries, cm.Hash, row.ClickModifiers()) {
+				s.reviewCommit(cm.Hash)
+			}
 		}
 		if row.DoubleClicked() {
 			s.checkoutCommitRow(cm)
@@ -211,6 +218,10 @@ func (s *Shell) commitsPane(c *ui.Context, pal *gdPalette) {
 		}
 		tipped(c, row, tip)
 		row.ContextMenu(func(m *ui.Menu) {
+			if chosen := s.commitChoiceHashes(s.git.commits); len(chosen) > 1 && s.commitChosen(cm.Hash) {
+				s.commitBatchMenu(m, chosen)
+				return
+			}
 			if m.Item("Cherry-pick Commit…").Chosen() {
 				s.confirmCherryPickCommit(cm.Hash, cm.Subject)
 			}
@@ -221,6 +232,7 @@ func (s *Shell) commitsPane(c *ui.Context, pal *gdPalette) {
 			if m.Item("Interactive Rebase Onto Here…").Disabled(s.git.opBusy).Chosen() {
 				s.openRebaseSheet(cm.Hash, cm.Short)
 			}
+			s.commitRewriteMenu(m, cm)
 			m.Submenu("Reset Current Branch to Here", func(sub *ui.Menu) {
 				for _, mode := range []gitworkbench.ResetMode{gitworkbench.ResetSoft, gitworkbench.ResetMixed, gitworkbench.ResetHard} {
 					if sub.Item(resetModeText[mode][0] + "…").Disabled(s.git.opBusy).Chosen() {

@@ -29,6 +29,8 @@ Git（复制自 Solco，随 `solco-gitkit` 演进）
 - `git_recovery.go`：Recovery 面板（Repository ▸ Recovery…，2026-11-12 决定第 (9) 条）：列出 Safety Journal 里可找回的丢弃 / 删除 / 删分支 / drop stash / Drop All / 应用补丁，每行 Recover（找回前内核重新校验，文件又变了就拒绝）；丢弃、删除、删分支、drop stash、Drop All 的确认框和应用补丁的文件选择框不再写「无法撤销」而指向这里；底层是 solco-gitkit `journal.go`。
 - `git_conflict.go`：冲突编辑界面（Resolve Conflicts…：冲突文件右键菜单与合并横幅里的 Resolve…，2026-11-12 决定第 (10) 条）：整页弹层，每个冲突块一张卡（Current | Incoming 两栏、Base 勾选展开、Current / Incoming / Both / Base 四个选择、上下文只留块前后两行），下方可手改的 Result（MyGo editor），Apply & Stage；选块会重写 Result，Result 被手改后块按钮停用、出现 Reset Result，残留标记时 Apply 停用；不能逐行合并的文件只给原因与整文件选择；底层是 solco-gitkit `conflict.go`。
 - `git_command_log.go`：命令日志界面（Repository ▸ Command Log…，2026-11-12 决定第 (11) 条）：本仓库这次运行里做过的 git 命令，新的在前、默认不含读（Show reads 勾选）、点一行复制、Copy All（旧到新，可当脚本）、Clear 只清本仓库；日志是全应用共享的内存 `sharedCommandLog`，Runner 与共享 Engine 同写，不落盘、不进 applog。
+- `git_history_ui.go`：历史改写界面（2026-11-12 决定第 (12) 条）：提交列表 ⌘ / ⇧ 多选（`pickCommit`）、右键菜单的 Squash / Fixup / Drop / Move Up·Down / Reword、Amend Staged Changes Into This Commit…、Cherry-pick N Commits…；一切先弹「预览」表（`PreviewHistory` 的结果，已推送的有警告、提示 ⌥⌘Z 可退回）再执行，冲突由内核中止并还原。
+- `git_patch_ui.go`：Custom Patch 界面（同一条决定）：提交审阅里整文件（文件菜单 Add File to Custom Patch）与按行（点行号，⇧ 连选、⌘ 追加、拖过；hunk 行 Add Hunk to Patch）两种选择，选择记在界面坐标里、执行时才用 `PatchSource` + `PatchLinesFor` 换成 Git 的行号（对不上即拒绝）；审阅顶部的 Custom Patch 条（Remove / Split / Move / Undo / Clear，Move 先选目标提交）；合并提交、stash、不在当前分支的提交不可用；换提交即清空选择。
 - `commit_tree.go`：Fork 的 File Tree——提交评审里 Diff | Tree 切换，按提交看整棵树（读 `ListTree`/`ReadBlob`，只读）。
 - `multi_push.go`：Push Multiple…——一次推多个分支与标签（`ReadPushOffer`/`PushMany`），分叉的标为受阻，永不强推。
 - `image_compare.go`：图片改动的 2-up / Swipe / Onion 对比，画在已解码位图上。
@@ -55,6 +57,8 @@ UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差�
 - `git_recovery_test.go`：丢弃 + 删除后列表有对应条目且新的在前、Recover 放回内容、确认框指向 Recovery、Repository 菜单有 Recovery…、删掉的分支与 drop 的 stash 一并找回、应用的补丁与清空的 stash 一并找回。
 - `git_conflict_test.go`：真实合并冲突上的打开、点 Incoming 改写 Result 且 Apply 前不落盘、手改锁块与 Reset Result、Apply 暂存、残留标记时不能 Apply、一方删除只给整文件选择、Recovery 重开冲突；`SOLCOGIT_EVIDENCE` 保留 PNG。
 - `git_command_log_test.go`：丢弃后表里有写命令且默认不含读、Show reads 后读也出现、Copy All 旧到新每命令一行、Clear 只清本仓库、Repository 菜单有 Command Log…；SOLCOGIT_EVIDENCE 落 PNG。
+- `git_history_ui_test.go`：先预览再改写（Drop / Squash / Fixup / Move / Reword / Amend / Cherry-pick N）、取消不动仓库、预览拒绝成 toast、已推送警告、冲突的改写被中止且仓库原样、改写可由 Undo 退回、⌘ / ⇧ 多选规则；SOLCOGIT_EVIDENCE 落 PNG。
+- `git_patch_ui_test.go`：选择规则（点选 / ⌘ / ⇧ / 整文件被行选收窄 / 换提交清空）、合并 / 他分支提交不可用、Remove / Split / Move / Undo 的结果与选择一致、改名文件的按行移除、冲突与对不上时仓库原样；每条规则做过变异检查。
 - `window_menu_test.go`：应用菜单合同——About 之后才是 Check for Updates…（main 接上更新器才有，每次重装菜单拿新菜单项），Settings… 与 Quit 不丢。
 - `window_workspaces_test.go`：工作区下拉与管理的合同——chip 始终是当前工作区；搜索（过滤、↑↓、↵ 切换并刷新、无命中时 ↵ 什么也不做）、最大高度与滚动、行右键移除、设置里的排序/移除/Add Workspace…（添加不抢前台）、每一种打开方式都加入清单、旧版 `tabs` 键读成工作区、清单上限、共享图标按钮是 Tab 停靠点。
 - `window_landing_test.go`：冷启动经链接落点——首读之后列表顶上是被点名文件的卡，内容分批读到后也不动，过了揭示窗口选中行仍是它。

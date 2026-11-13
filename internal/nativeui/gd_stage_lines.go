@@ -58,12 +58,18 @@ func (s *Shell) gdStageSide(f *gdFile) (unstage, ok bool) {
 
 // gdPicked reports whether a line of the file's shown side is picked.
 func (s *Shell) gdPicked(f *gdFile, hunk, index int) bool {
+	if s.gdReviewingCommit() {
+		return s.patchPicked(f, hunk, index)
+	}
 	p := &s.git.gdPick
 	return p.holds(s.git.snapshot, f) && p.lines[[2]int{hunk, index}]
 }
 
 // gdPickedIn returns the picked line indices of one hunk, nil for none.
 func (s *Shell) gdPickedIn(f *gdFile, hunk int) map[int]bool {
+	if s.gdReviewingCommit() {
+		return s.patchPickedIn(f, hunk)
+	}
 	p := &s.git.gdPick
 	if !p.holds(s.git.snapshot, f) {
 		return nil
@@ -84,6 +90,10 @@ func (s *Shell) gdPickedIn(f *gdFile, hunk int) map[int]bool {
 // just that line (again, to clear it), ⌘ toggles it among the picked, ⇧ picks
 // the changed lines between the last pick and this one in the same hunk.
 func (s *Shell) gdPickLine(f *gdFile, hunk, index int, mods ui.Modifiers) {
+	if s.gdReviewingCommit() {
+		s.patchPickLine(f, hunk, index, mods)
+		return
+	}
 	p := &s.git.gdPick
 	if !p.holds(s.git.snapshot, f) {
 		*p = gdLinePick{snap: s.git.snapshot, path: f.cf.Path, view: f.view}
@@ -114,6 +124,10 @@ func (s *Shell) gdPickLine(f *gdFile, hunk, index int, mods ui.Modifiers) {
 // gdPickRange picks exactly the changed lines of one hunk between two line
 // indices, keeping the anchor where it is.
 func (s *Shell) gdPickRange(f *gdFile, hunk, from, to int) {
+	if s.gdReviewingCommit() {
+		s.patchPickRange(f, hunk, from, to)
+		return
+	}
 	p := &s.git.gdPick
 	if !p.holds(s.git.snapshot, f) {
 		*p = gdLinePick{snap: s.git.snapshot, path: f.cf.Path, view: f.view}
@@ -170,7 +184,11 @@ func (s *Shell) gdGutterPick(f *gdFile, gutter ui.Element, hunk, index int) {
 	if _, _, over := gutter.PointerPosition(); over {
 		d.last, d.moved = index, true
 		s.gdPickRange(f, hunk, d.src, index)
-		s.git.gdPick.anchor, s.git.gdPick.anchored = [2]int{hunk, d.src}, true
+		if s.gdReviewingCommit() {
+			s.patch.anchor, s.patch.anchorPath, s.patch.anchored = [2]int{hunk, d.src}, f.cf.Path, true
+		} else {
+			s.git.gdPick.anchor, s.git.gdPick.anchored = [2]int{hunk, d.src}, true
+		}
 	}
 }
 
@@ -227,6 +245,10 @@ func gdHunkHeaderText(h gitworkbench.Hunk) string {
 // pointer is on it or lines are picked — the action that moves the picked
 // lines (else the whole hunk) between the worktree and the index.
 func (s *Shell) gdHunkRow(c *ui.Context, pal *gdPalette, f *gdFile, r *gdRow) {
+	if s.gdReviewingCommit() {
+		s.patchHunkRow(c, pal, f, r)
+		return
+	}
 	hunks := f.hunks()
 	unstage, ok := s.gdStageSide(f)
 	if !ok || int(r.hunk) >= len(hunks) {

@@ -161,8 +161,14 @@ type Shell struct {
 	changesSearchOpen, gitCommitSearchOpen, gitCommitFilesSearchOpen bool
 	gitConflictFilesExpanded                                         bool
 	// commitsMode shows the All Commits pane instead of the split panes.
-	commitsMode     bool
-	commitsList     ui.ListState
+	commitsMode bool
+	commitsList ui.ListState
+	// commitChoice is the ⌘ / ⇧ multi-selection of commits (git_history_ui.go);
+	// commitAnchor is where a ⇧ range starts.
+	commitChoice map[string]bool
+	commitAnchor string
+	// patch is the Custom Patch choice on the commit under review (git_patch_ui.go).
+	patch           patchSelection
 	commitsSelected int
 	branchMenuOpen  bool
 	branchFilter    string

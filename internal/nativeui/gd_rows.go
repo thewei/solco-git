@@ -173,6 +173,7 @@ func (s *Shell) buildGdRows() {
 			}
 		}
 		_, canStage := s.gdStageSide(f)
+		canStage = canStage || s.gdPatchPickable(f)
 		for hi := range f.hunks() {
 			addGap(f.gapBefore(hi))
 			lines := f.hunks()[hi].Lines
