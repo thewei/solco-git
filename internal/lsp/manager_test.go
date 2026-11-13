@@ -299,3 +299,140 @@ func TestLocationsReadsLocationsAndLinks(t *testing.T) {
 		t.Errorf("a non-file URI is not a location: %+v", l)
 	}
 }
+
+func TestCompletionGivesItemsInServerOrderWithByteStartsAndLeavesOutOnesNeedingAnImport(t *testing.T) {
+	s := newSink()
+	m, root, _ := fakeManager(t, s)
+	path := filepath.Join(root, "a.go")
+	text := "package a\n\nfunc f() {\n\té😀 := fmt.Pri\n}\n"
+	m.Sync(path, 4, text)
+	off := strings.Index(text, "fmt.Pri") + len("fmt.Pri")
+	items, err := m.Completion(context.Background(), path, 4, off)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 2 || items[0].Label != "Println" || items[1].Label != "Printf" {
+		t.Fatalf("items = %+v, want Println then Printf (by sortText) and no Unimported", items)
+	}
+	if want := strings.Index(text, "Pri"); items[0].Start != want {
+		t.Fatalf("start = %d, want the byte where the word begins (%d)", items[0].Start, want)
+	}
+	if items[0].Insert != "Println" || items[0].Doc != "Println prints a line." || items[0].Detail != "func(a ...any)" {
+		t.Fatalf("Println = %+v", items[0])
+	}
+	if !items[1].Snippet || items[1].Insert != "Printf(${1:format})" || items[1].Doc != "Printf formats." {
+		t.Fatalf("Printf = %+v", items[1])
+	}
+}
+
+func TestFormatAnswersEditsThatApplyToTheTextAsAsked(t *testing.T) {
+	s := newSink()
+	m, root, _ := fakeManager(t, s)
+	path := filepath.Join(root, "a.go")
+	text := "package a\nfunc f() {\n    x := 1\n  y := 2\n}\n"
+	m.Sync(path, 1, text)
+	edits, err := m.Format(context.Background(), path, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := ApplyEdits(text, edits), "package a\nfunc f() {\n\t\tx := 1\n\ty := 2\n}\n"; got != want {
+		t.Fatalf("formatted = %q, want %q", got, want)
+	}
+}
+
+func TestRenameGroupsTheEditsByFileAndTheOpenTextWinsOverTheDisk(t *testing.T) {
+	s := newSink()
+	m, root, _ := fakeManager(t, s)
+	a := filepath.Join(root, "a.go")
+	b := filepath.Join(root, "sub", "b.go")
+	os.MkdirAll(filepath.Dir(b), 0o755)
+	os.WriteFile(b, []byte("package sub\n\nvar _ = Greet\n\tGreetings := 1\n"), 0o644)
+	os.WriteFile(a, []byte("on disk\n"), 0o644) // the open text differs from this
+	text := "package a\n\nfunc Greet() {}\nvar _ = Greet\n"
+	m.Sync(a, 2, text)
+	files, err := m.Rename(context.Background(), a, 2, strings.Index(text, "Greet")+2, "Hello")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(files) != 2 || files[0].Path != a || files[1].Path != b {
+		t.Fatalf("files = %+v, want a.go (from the open text) and sub/b.go", files)
+	}
+	if got := ApplyEdits(text, files[0].Edits); got != "package a\n\nfunc Hello() {}\nvar _ = Hello\n" {
+		t.Fatalf("a.go = %q", got)
+	}
+	disk, _ := os.ReadFile(b)
+	if got := ApplyEdits(string(disk), files[1].Edits); got != "package sub\n\nvar _ = Hello\n\tGreetings := 1\n" { // whole words only
+		t.Fatalf("b.go = %q", got)
+	}
+	if _, err := m.Rename(context.Background(), a, 2, 0, ""); err == nil {
+		t.Fatal("a server's refusal comes back as an error")
+	}
+}
+
+func TestAServerWithoutTheWriteCapabilitiesIsNotAskedForThem(t *testing.T) {
+	s := newSink()
+	m, root, _ := fakeManager(t, s)
+	t.Setenv("LSP_FAKE_CAPS", "read")
+	path := filepath.Join(root, "a.go")
+	m.Sync(path, 1, "package a\n")
+	waitFor(t, "running", func() bool { return m.Status(path).State == StateRunning })
+	if c := m.Can(path); c.Completion || c.Format || c.Rename {
+		t.Fatalf("caps = %+v, want none", c)
+	}
+	if _, err := m.Completion(context.Background(), path, 1, 0); err != ErrNoServer {
+		t.Fatalf("completion err = %v, want ErrNoServer", err)
+	}
+	if _, err := m.Format(context.Background(), path, 1); err != ErrNoServer {
+		t.Fatalf("format err = %v", err)
+	}
+}
+
+func TestFilesChangedTellsTheServerOfTheLanguage(t *testing.T) {
+	s := newSink()
+	m, root, log := fakeManager(t, s)
+	path := filepath.Join(root, "a.go")
+	m.Sync(path, 1, "package a\n")
+	waitFor(t, "running", func() bool { return m.Status(path).State == StateRunning })
+	m.FilesChanged([]string{filepath.Join(root, "b.go"), filepath.Join(root, "notes.txt")})
+	waitFor(t, "the notice", func() bool { return strings.Contains(strings.Join(calls(log), " "), "workspace/didChangeWatchedFiles") })
+}
+
+func TestApplyEditsAreInUTF16AndKeepCRLFAndCutOverlaps(t *testing.T) {
+	text := "a😀b\r\nsecond\r\n"
+	edits := []TextEdit{
+		{Range: Range{Start: Position{0, 3}, End: Position{0, 4}}, NewText: "B"},      // b after the emoji (2 units)
+		{Range: Range{Start: Position{1, 0}, End: Position{1, 6}}, NewText: "SECOND"}, // the line's end is before \r
+		{Range: Range{Start: Position{0, 0}, End: Position{0, 1}}, NewText: "A"},
+	}
+	if got, want := ApplyEdits(text, edits), "A😀B\r\nSECOND\r\n"; got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+	// Two edits over the same bytes: the second is cut to follow the first.
+	over := []TextEdit{
+		{Range: Range{Start: Position{0, 0}, End: Position{0, 1}}, NewText: "X"},
+		{Range: Range{Start: Position{0, 0}, End: Position{0, 1}}, NewText: "Y"},
+	}
+	if got := ApplyEdits("abc", over); got != "XYbc" {
+		t.Fatalf("overlap: %q", got)
+	}
+	if got := ByteEdits("a😀b", []TextEdit{{Range: Range{Start: Position{0, 3}, End: Position{0, 4}}}}); got[0].Start != 5 || got[0].End != 6 {
+		t.Fatalf("byte edit = %+v", got)
+	}
+}
+
+func TestWorkspaceEditAcceptsPlainChangesAndTextOnlyDocumentChangesButNotFileOperations(t *testing.T) {
+	plain := `{"changes":{"file:///b.go":[{"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":1}},"newText":"x"}]}}`
+	if f, err := workspaceEdit([]byte(plain)); err != nil || len(f) != 1 || f[0].Path != "/b.go" {
+		t.Fatalf("changes: %+v %v", f, err)
+	}
+	dc := `{"documentChanges":[{"textDocument":{"uri":"file:///c.go","version":1},"edits":[{"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":0}},"newText":"y"}]}]}`
+	if f, err := workspaceEdit([]byte(dc)); err != nil || len(f) != 1 || f[0].Path != "/c.go" || f[0].Edits[0].NewText != "y" {
+		t.Fatalf("documentChanges: %+v %v", f, err)
+	}
+	if _, err := workspaceEdit([]byte(`{"documentChanges":[{"kind":"rename","oldUri":"file:///a","newUri":"file:///b"}]}`)); err == nil {
+		t.Fatal("a file rename is refused")
+	}
+	if f, err := workspaceEdit([]byte(`null`)); err != nil || f != nil {
+		t.Fatalf("null: %+v %v", f, err)
+	}
+}

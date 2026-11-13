@@ -15,6 +15,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/sourcegraph/jsonrpc2"
@@ -36,10 +37,16 @@ const (
 // for (nil when the server does not say) and the raw items.
 type diagSink func(path string, version *int, items []rawDiagnostic)
 
+// Caps is what a running server can do beyond the reads every one has.
+type Caps struct {
+	Completion, Format, Rename bool
+}
+
 type client struct {
 	conn     *jsonrpc2.Conn
 	cmd      *exec.Cmd
 	root     string
+	caps     Caps
 	syncKind int
 	done     chan struct{} // closed when the connection ends (the server exited or crashed)
 	closing  bool
@@ -83,7 +90,10 @@ func startClient(ctx context.Context, argv []string, root string, sink diagSink)
 	defer cancel()
 	var res struct {
 		Capabilities struct {
-			TextDocumentSync json.RawMessage `json:"textDocumentSync"`
+			TextDocumentSync           json.RawMessage `json:"textDocumentSync"`
+			CompletionProvider         json.RawMessage `json:"completionProvider"`
+			DocumentFormattingProvider json.RawMessage `json:"documentFormattingProvider"`
+			RenameProvider             json.RawMessage `json:"renameProvider"`
 		} `json:"capabilities"`
 	}
 	params := map[string]any{
@@ -98,8 +108,15 @@ func startClient(ctx context.Context, argv []string, root string, sink diagSink)
 				"publishDiagnostics": map[string]any{"versionSupport": true},
 				"hover":              map[string]any{"contentFormat": []string{"plaintext", "markdown"}},
 				"definition":         map[string]any{"linkSupport": true},
+				"completion": map[string]any{"completionItem": map[string]any{
+					"snippetSupport": true, "documentationFormat": []string{"plaintext", "markdown"}}},
+				"formatting": map[string]any{},
+				"rename":     map[string]any{"prepareSupport": false},
 			},
-			"workspace": map[string]any{"workspaceFolders": true, "configuration": true},
+			// documentChanges stays off: the answer to a rename is then the plain
+			// {uri: edits} map, which is all the app applies.
+			"workspace": map[string]any{"workspaceFolders": true, "configuration": true,
+				"workspaceEdit": map[string]any{"documentChanges": false}},
 		},
 	}
 	if err := c.conn.Call(ictx, "initialize", params, &res); err != nil {
@@ -107,11 +124,22 @@ func startClient(ctx context.Context, argv []string, root string, sink diagSink)
 		return nil, fmt.Errorf("initialize: %w", err)
 	}
 	c.syncKind = textDocumentSyncChange(res.Capabilities.TextDocumentSync)
+	c.caps = Caps{
+		Completion: provided(res.Capabilities.CompletionProvider),
+		Format:     provided(res.Capabilities.DocumentFormattingProvider),
+		Rename:     provided(res.Capabilities.RenameProvider),
+	}
 	if err := c.conn.Notify(ctx, "initialized", map[string]any{}); err != nil {
 		c.kill()
 		return nil, err
 	}
 	return c, nil
+}
+
+// provided reports whether a capability is on: present, and not false/null.
+func provided(raw json.RawMessage) bool {
+	s := strings.TrimSpace(string(raw))
+	return s != "" && s != "null" && s != "false"
 }
 
 // textDocumentSyncChange reads the sync kind off the server's capability,
@@ -227,6 +255,50 @@ func (c *client) hover(ctx context.Context, path string, pos Position) (string, 
 	return hoverText(res.Contents), res.Range, nil
 }
 
+// completion asks for the completions at pos.
+func (c *client) completion(ctx context.Context, path string, pos Position) (json.RawMessage, error) {
+	var raw json.RawMessage
+	err := c.position(ctx, "textDocument/completion", path, pos, &raw)
+	return raw, err
+}
+
+// formatting asks how to format the whole document. tabs: indent with tabs.
+func (c *client) formatting(ctx context.Context, path string, tabs bool) ([]TextEdit, error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*requestTimeout)
+	defer cancel()
+	var edits []TextEdit
+	err := c.conn.Call(ctx, "textDocument/formatting", map[string]any{
+		"textDocument": map[string]any{"uri": FileURI(path)},
+		"options":      map[string]any{"tabSize": 4, "insertSpaces": !tabs},
+	}, &edits)
+	return edits, err
+}
+
+// rename asks for the edits that rename the symbol at pos.
+func (c *client) rename(ctx context.Context, path string, pos Position, newName string) ([]FileEdit, error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*requestTimeout)
+	defer cancel()
+	var raw json.RawMessage
+	if err := c.conn.Call(ctx, "textDocument/rename", map[string]any{
+		"textDocument": map[string]any{"uri": FileURI(path)},
+		"position":     pos,
+		"newName":      newName,
+	}, &raw); err != nil {
+		return nil, err
+	}
+	return workspaceEdit(raw)
+}
+
+// watchedFilesChanged tells the server files it may have cached were
+// rewritten on disk (type 2 = changed).
+func (c *client) watchedFilesChanged(paths []string) error {
+	changes := make([]map[string]any, 0, len(paths))
+	for _, p := range paths {
+		changes = append(changes, map[string]any{"uri": FileURI(p), "type": 2})
+	}
+	return c.conn.Notify(context.Background(), "workspace/didChangeWatchedFiles", map[string]any{"changes": changes})
+}
+
 func (c *client) definition(ctx context.Context, path string, pos Position) ([]Location, error) {
 	var raw json.RawMessage
 	if err := c.position(ctx, "textDocument/definition", path, pos, &raw); err != nil {
@@ -260,3 +332,13 @@ func (c *client) kill() {
 
 // ErrNoServer is what a request gets when no server is running for the file.
 var ErrNoServer = errors.New("no language server is running for this file")
+
+// Message is the text a server gave when it refused a request ("nothing to
+// rename here"), "" for any other error.
+func Message(err error) string {
+	var re *jsonrpc2.Error
+	if errors.As(err, &re) {
+		return re.Message
+	}
+	return ""
+}

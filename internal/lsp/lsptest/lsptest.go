@@ -17,6 +17,15 @@ package lsptest
 //   - definition answers a location in other.go (line 4, columns 2–6), null when
 //     the line says NONE, and a file outside any repository when it says OUTSIDE;
 //   - a change that holds CRASH ends the process;
+//   - completion at "fmt.Pri" answers Println (kind function, replaces the word),
+//     Printf (a snippet) and an unimported package member that needs an import
+//     (additionalTextEdits, which the app must leave out);
+//   - formatting turns every line's leading pairs of spaces into one tab each;
+//   - rename of the identifier at the position answers `changes` for every .go
+//     file under the root (open texts win over the disk), whole-word matches only,
+//     and, when the new name is OUTSIDE, also a file outside the root;
+//   - LSP_FAKE_CAPS=read leaves completion, formatting and rename out of the
+//     capabilities;
 //   - every notification and request method is appended to LSP_FAKE_LOG.
 
 import (
@@ -59,6 +68,36 @@ func Serve() bool {
 	return true
 }
 
+// byteIdx and u16 convert between a UTF-16 column and a byte index of line.
+func byteIdx(line string, col int) int {
+	n := 0
+	for i, r := range line {
+		if n >= col {
+			return i
+		}
+		n++
+		if r >= 0x10000 {
+			n++
+		}
+	}
+	return len(line)
+}
+
+func u16(line string, idx int) int {
+	n := 0
+	for _, r := range line[:idx] {
+		n++
+		if r >= 0x10000 {
+			n++
+		}
+	}
+	return n
+}
+
+func isIdent(b byte) bool {
+	return b == '_' || b >= '0' && b <= '9' || b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z'
+}
+
 func runFake() {
 	logf, _ := os.OpenFile(os.Getenv("LSP_FAKE_LOG"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	note := func(s string) {
@@ -67,6 +106,7 @@ func runFake() {
 		}
 	}
 	texts := map[string]string{}
+	root := ""
 	var conn *jsonrpc2.Conn
 	publish := func(uri string, version int) {
 		var ds []map[string]any
@@ -102,14 +142,111 @@ func runFake() {
 				Line      int `json:"line"`
 				Character int `json:"character"`
 			} `json:"position"`
+			RootURI string `json:"rootUri"`
+			NewName string `json:"newName"`
 		}
 		if req.Params != nil {
 			_ = json.Unmarshal(*req.Params, &p)
 		}
 		switch req.Method {
 		case "initialize":
-			return map[string]any{"capabilities": map[string]any{
-				"textDocumentSync": map[string]any{"openClose": true, "change": 1}, "hoverProvider": true, "definitionProvider": true}}, nil
+			root = strings.TrimPrefix(p.RootURI, "file://")
+			caps := map[string]any{
+				"textDocumentSync": map[string]any{"openClose": true, "change": 1}, "hoverProvider": true, "definitionProvider": true}
+			if os.Getenv("LSP_FAKE_CAPS") != "read" {
+				caps["completionProvider"] = map[string]any{"triggerCharacters": []string{"."}}
+				caps["documentFormattingProvider"] = true
+				caps["renameProvider"] = true
+			}
+			return map[string]any{"capabilities": caps}, nil
+		case "textDocument/completion":
+			text := texts[p.TextDocument.URI]
+			lines := strings.Split(text, "\n")
+			ln := lines[p.Position.Line]
+			col := byteIdx(ln, p.Position.Character)
+			word := col
+			for word > 0 && isIdent(ln[word-1]) {
+				word--
+			}
+			edit := func(newText string) map[string]any {
+				return map[string]any{"newText": newText, "range": map[string]any{
+					"start": map[string]any{"line": p.Position.Line, "character": u16(ln, word)},
+					"end":   map[string]any{"line": p.Position.Line, "character": u16(ln, col)}}}
+			}
+			return map[string]any{"isIncomplete": false, "items": []map[string]any{
+				{"label": "Printf", "kind": 3, "detail": "func(format string, a ...any)", "sortText": "b", "insertTextFormat": 2,
+					"textEdit": edit("Printf(${1:format})"), "documentation": map[string]any{"kind": "markdown", "value": "Printf formats."}},
+				{"label": "Println", "kind": 3, "detail": "func(a ...any)", "sortText": "a", "textEdit": edit("Println"),
+					"documentation": "Println prints a line."},
+				{"label": "Unimported", "kind": 3, "sortText": "c", "textEdit": edit("Unimported"),
+					"additionalTextEdits": []map[string]any{{"newText": "import \"x\"\n", "range": map[string]any{
+						"start": map[string]any{"line": 0, "character": 0}, "end": map[string]any{"line": 0, "character": 0}}}}},
+			}}, nil
+		case "textDocument/formatting":
+			var edits []map[string]any
+			for i, line := range strings.Split(texts[p.TextDocument.URI], "\n") {
+				n := 0
+				for n < len(line) && line[n] == ' ' {
+					n++
+				}
+				if n >= 2 {
+					edits = append(edits, map[string]any{"newText": strings.Repeat("\t", n/2), "range": map[string]any{
+						"start": map[string]any{"line": i, "character": 0}, "end": map[string]any{"line": i, "character": n - n%2}}})
+				}
+			}
+			return edits, nil
+		case "textDocument/rename":
+			if p.NewName == "" {
+				return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams, Message: "empty name"}
+			}
+			line := strings.Split(texts[p.TextDocument.URI], "\n")[p.Position.Line]
+			a := byteIdx(line, p.Position.Character)
+			b := a
+			for a > 0 && isIdent(line[a-1]) {
+				a--
+			}
+			for b < len(line) && isIdent(line[b]) {
+				b++
+			}
+			old := line[a:b]
+			if old == "" {
+				return nil, &jsonrpc2.Error{Code: jsonrpc2.CodeInvalidParams, Message: "nothing to rename here"}
+			}
+			changes := map[string][]map[string]any{}
+			scan := func(uri, text string) {
+				for i, ln := range strings.Split(text, "\n") {
+					for at := 0; ; {
+						k := strings.Index(ln[at:], old)
+						if k < 0 {
+							break
+						}
+						k += at
+						end := k + len(old)
+						if (k == 0 || !isIdent(ln[k-1])) && (end == len(ln) || !isIdent(ln[end])) {
+							changes[uri] = append(changes[uri], map[string]any{"newText": p.NewName, "range": map[string]any{
+								"start": map[string]any{"line": i, "character": u16(ln, k)}, "end": map[string]any{"line": i, "character": u16(ln, end)}}})
+						}
+						at = end
+					}
+				}
+			}
+			_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+				if err != nil || d.IsDir() || !strings.HasSuffix(path, ".go") {
+					return nil
+				}
+				uri := "file://" + path
+				if text, open := texts[uri]; open {
+					scan(uri, text)
+				} else if b, err := os.ReadFile(path); err == nil {
+					scan(uri, string(b))
+				}
+				return nil
+			})
+			if p.NewName == "OUTSIDE" {
+				changes["file:///usr/lib/outside.go"] = []map[string]any{{"newText": "x", "range": map[string]any{
+					"start": map[string]any{"line": 0, "character": 0}, "end": map[string]any{"line": 0, "character": 1}}}}
+			}
+			return map[string]any{"changes": changes}, nil
 		case "textDocument/didOpen":
 			texts[p.TextDocument.URI] = p.TextDocument.Text
 			publish(p.TextDocument.URI, p.TextDocument.Version)

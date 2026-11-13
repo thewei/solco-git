@@ -42,6 +42,10 @@ type lspState struct {
 	mgr  *lsp.Manager
 	high uint64 // the highest LSP version ever sent, so versions only grow
 	doc  lspDocState
+	// rename is a rename the server answered, waiting on the unsaved-edits sheet;
+	// renameAt is the caret it was asked at.
+	rename   *lspRenameJob
+	renameAt int
 	// resolve, when set (tests), replaces the installed-server lookup.
 	resolve func(lsp.Spec) []string
 }
@@ -211,6 +215,8 @@ func (s *Shell) lspBind(code *editor.State, path string) {
 			})
 		}()
 	}
+	code.OnCompletion = func(req editor.CompletionRequest) { s.lspComplete(code, path, req) }
+	code.OnInput = s.lspInput
 	code.OnDefinition = func(offset int) {
 		d := &s.lsp.doc
 		if d.path != path {

@@ -199,6 +199,7 @@ func (s *Shell) beginNativeText(path string, flavor filesview.Flavor) {
 				SoftWrap: flavor == filesview.FlavorMarkdown || l.buf.Language() == nil,
 				// After the editor's own Copy / Select All.
 				ContextMenu: func(m *ui.Menu) {
+					s.lspMenuItems(m)
 					m.Separator()
 					s.filesPathItems(m, path, true)
 				},

@@ -9,6 +9,7 @@ package nativeui
 
 import (
 	"errors"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -165,6 +166,12 @@ func errClass(err error) string {
 // always either the old text or the new one. A symbolic link is followed to
 // its target, which must stay inside root.
 func writeFileAtomic(path, root string, snap editor.Snapshot) error {
+	return writeAtomic(path, root, func(w io.Writer) error { _, err := snap.WriteTo(w); return err })
+}
+
+// writeAtomic is writeFileAtomic for any writer of the new bytes (a rename
+// writes the files it changes byte for byte, line endings and all).
+func writeAtomic(path, root string, write func(io.Writer) error) error {
 	target := path
 	if resolved, err := filepath.EvalSymlinks(path); err == nil {
 		target = resolved
@@ -191,7 +198,7 @@ func writeFileAtomic(path, root string, snap editor.Snapshot) error {
 		os.Remove(tmpName)
 		return err
 	}
-	if _, err := snap.WriteTo(tmp); err != nil {
+	if err := write(tmp); err != nil {
 		return fail(err)
 	}
 	if err := tmp.Chmod(info.Mode().Perm()); err != nil {

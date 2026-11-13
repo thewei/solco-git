@@ -2,7 +2,7 @@ package lsp
 
 /**
  * [INPUT]: 一个工作区根、各 Spec 的已装命令、界面交来的文档（路径、版本、文本）
- * [OUTPUT]: Manager——每种语言至多一个服务器进程（首次打开该语言的文件时才起，随工作区结束）；对账式同步（界面只说"这个文档现在是这样"，服务器端的 open/change/close 由对账发出，崩溃重启后重放）；Hover / Definition；诊断换算成字节偏移后交给界面；Status / Close
+ * [OUTPUT]: Manager——每种语言至多一个服务器进程（首次打开该语言的文件时才起，随工作区结束）；对账式同步（界面只说"这个文档现在是这样"，服务器端的 open/change/close 由对账发出，崩溃重启后重放）；Hover / Definition / Completion / Format / Rename / Can / FilesChanged；诊断换算成字节偏移后交给界面；Status / Close
  * [POS]: 每分钟最多重启 3 次，再坏就保持关闭并留一句话给状态栏（2026-11-13 决定第 (4) 条）。日志只有操作名、语言、计数、耗时、错误类别——从不记路径、文本、诊断、请求
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -453,6 +454,103 @@ func (m *Manager) Definition(ctx context.Context, path string, version uint64, o
 		return nil, err
 	}
 	return cl.definition(ctx, path, idx.position(offset))
+}
+
+// Can reports what the running server for path can do; all false when none
+// is running.
+func (m *Manager) Can(path string) Caps {
+	sp, _, ok := SpecFor(path)
+	if !ok {
+		return Caps{}
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if sl := m.slots[sp.ID]; sl != nil && sl.cl != nil {
+		return sl.cl.caps
+	}
+	return Caps{}
+}
+
+// maxCompletions bounds the list handed to the editor.
+const maxCompletions = 300
+
+// Completion asks for the completions at byte offset of the document at
+// version. Items that also edit elsewhere (an import) are left out: the
+// editor inserts one piece of text at one place.
+func (m *Manager) Completion(ctx context.Context, path string, version uint64, offset int) ([]CompletionItem, error) {
+	cl, idx, err := m.request(ctx, path, version)
+	if err != nil {
+		return nil, err
+	}
+	if !cl.caps.Completion {
+		return nil, ErrNoServer
+	}
+	raw, err := cl.completion(ctx, path, idx.position(offset))
+	if err != nil {
+		return nil, err
+	}
+	var out []CompletionItem
+	for _, it := range completionItems(raw, idx, maxCompletions*2) {
+		if !it.NeedsMore {
+			out = append(out, it)
+		}
+	}
+	if len(out) > maxCompletions {
+		out = out[:maxCompletions]
+	}
+	return out, nil
+}
+
+// Format asks how to format the document; the edits are in protocol
+// positions of the version asked about.
+func (m *Manager) Format(ctx context.Context, path string, version uint64) ([]TextEdit, error) {
+	cl, _, err := m.request(ctx, path, version)
+	if err != nil {
+		return nil, err
+	}
+	if !cl.caps.Format {
+		return nil, ErrNoServer
+	}
+	return cl.formatting(ctx, path, filepath.Ext(path) == ".go")
+}
+
+// Rename asks for the edits that rename the symbol at byte offset, one
+// FileEdit per file the rename touches.
+func (m *Manager) Rename(ctx context.Context, path string, version uint64, offset int, newName string) ([]FileEdit, error) {
+	cl, idx, err := m.request(ctx, path, version)
+	if err != nil {
+		return nil, err
+	}
+	if !cl.caps.Rename {
+		return nil, ErrNoServer
+	}
+	return cl.rename(ctx, path, idx.position(offset), newName)
+}
+
+// FilesChanged tells the servers of the paths' languages that files were
+// rewritten on disk behind their back (a rename wrote closed files).
+func (m *Manager) FilesChanged(paths []string) {
+	byID := map[string][]string{}
+	for _, p := range paths {
+		if sp, _, ok := SpecFor(p); ok {
+			byID[sp.ID] = append(byID[sp.ID], p)
+		}
+	}
+	m.mu.Lock()
+	type job struct {
+		cl    *client
+		paths []string
+	}
+	var jobs []job
+	for id, ps := range byID {
+		if sl := m.slots[id]; sl != nil && sl.cl != nil {
+			jobs = append(jobs, job{sl.cl, ps})
+		}
+	}
+	m.mu.Unlock()
+	for _, j := range jobs {
+		_ = j.cl.watchedFilesChanged(j.paths)
+	}
 }
 
 // Close ends every server, in order, and refuses further work.

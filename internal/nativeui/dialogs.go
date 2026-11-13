@@ -159,6 +159,7 @@ func (s *Shell) dialogs(c *ui.Context) {
 	s.gitNoticeDialog(c)
 	s.gitMoreDialogs(c)
 	s.dirtySheet(c)
+	s.lspRenameSheet(c)
 	if s.confirmOpen {
 		// Destructive confirms must not default-focus the destructive
 		// button: AlertDialog focuses and Enter-clicks its LAST button, so
@@ -188,6 +189,8 @@ func (s *Shell) submitTextDialog(kind, target, value string) {
 		s.submitStashLines(target, value)
 	case "git-rename-branch", "git-create-branch-at", "git-rename-stash":
 		s.submitRefDialog(kind, target, value)
+	case "lsp-rename":
+		s.lspRename(target, value)
 	case "files-new-file", "files-new-dir", "files-rename":
 		s.runFilesMutation(kind, target, value)
 	}
