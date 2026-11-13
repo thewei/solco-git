@@ -24,7 +24,7 @@ mygo.config.ts - app name/identifier/version, the `solcogit` URL scheme, icon, m
 .gitignore - build output, the local go.work
 </config>
 
-Product rule: **Solco Git is a Git client and Files viewer, not a workspace.** It owns native presentation, its own preferences and window state. Git truth stays in the repository and in `solco-gitkit`; there is no Workspace, Pane, terminal, agent, Herdr, process lifecycle, account, cloud service or telemetry here, and nothing from the `solco` repository is imported.
+Product rule: **Solco Git is a Git client with an in-place Files editor, not a workspace.** It owns native presentation, its own preferences and window state. Git truth stays in the repository and in `solco-gitkit`; there is no Workspace, Pane, agent, Herdr, account, cloud service or telemetry here, and nothing from the `solco` repository is imported. Since the 2026-11-13 decision (Solco `docs/product-decisions.md`, "Solco Git edits in place") the Files page is the one place that may write: files open read-only and a pencil button turns editing on, with fzf-style quick open (⌘P), a language-server client (servers already on PATH only) and a terminal drawer running the user's shell (or handing the repository to Solco, by setting) — each arriving in steps E1–E5; until a step lands, that part stays as described below. The only processes this app owns are that shell and the language servers, both ending with the workspace.
 
 Implementation rule: do not hand-roll what a mature owner has. Search in order: `git` through `solco-gitkit` → MyGo native components/official plugins → a proven compatible implementation → custom code. A missing Git capability is added to `solco-gitkit` (with a real-repository test), never as a second way of running `git` here.
 
