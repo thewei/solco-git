@@ -93,11 +93,19 @@ func (s *Shell) lspMenuItems(m *ui.Menu) {
 	}
 }
 
-// lspInput takes F2 (rename) and ⌥⇧F (format) before the editor sees them.
+// lspInput takes F2 (rename) and ⌥⇧F (format) before the editor sees them. A
+// taken ⌥⇧F still types its Option character on macOS (real window,
+// 2026-11-13: "Ï" in the text, which also made the format answer stale), so
+// the text that follows the key is taken as well.
 func (s *Shell) lspInput(ev ui.InputEvent) bool {
+	if ev.Kind == ui.InputText && s.lsp.dropText {
+		s.lsp.dropText = false
+		return true
+	}
 	if ev.Kind != ui.InputKeyDown || ev.Repeat {
 		return false
 	}
+	s.lsp.dropText = false
 	mods := ev.Mods & (ui.Super | ui.Ctrl | ui.Alt | ui.Shift)
 	caps, ok := s.lspWritable()
 	if !ok {
@@ -109,6 +117,7 @@ func (s *Shell) lspInput(ev ui.InputEvent) bool {
 		return true
 	case (ev.Key == ui.KeyF || ev.PhysicalKey == ui.KeyF) && mods == ui.Alt|ui.Shift && caps.Format:
 		s.lspFormat()
+		s.lsp.dropText = true
 		return true
 	}
 	return false

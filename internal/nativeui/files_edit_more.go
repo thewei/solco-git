@@ -137,7 +137,7 @@ func (s *Shell) saveAsTo(path string) {
 		return
 	}
 	slog.Info("file saved as")
-	switch _, inside := s.underRoot(path); {
+	switch rel, inside := s.underRoot(path); {
 	case samePath(path, e.path):
 		st.nativeCode.Buffer.MarkSaved()
 		e.gone, e.diskChanged = false, false
@@ -152,7 +152,8 @@ func (s *Shell) saveAsTo(path string) {
 	case inside:
 		st.nativeCode.Buffer.MarkSaved()
 		s.afterWrite()
-		s.revealFile(path)
+		s.refreshFiles()                        // the Files tree lists the new file
+		s.revealFile(filepath.Join(s.dir, rel)) // the panel's path may come by a symlink the root does not name
 		s.pendingToast = "Saved as " + filepath.Base(path)
 	default:
 		s.pendingToast = "Saved a copy as " + filepath.Base(path) + ". " + filepath.Base(e.path) + " is unchanged."

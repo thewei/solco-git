@@ -216,6 +216,26 @@ func TestF2AndOptionShiftFAreTheServersWhenItCanDoThem(t *testing.T) {
 	}
 }
 
+// macOS types the Option character right after a keyDown the app took; the
+// editor must not receive it (the text it would make the format answer stale).
+func TestOptionShiftFDropsTheCharacterMacOSTypesAfterIt(t *testing.T) {
+	_, sh, _, _, _ := editableGo(t, map[string][]byte{"a.go": []byte("package a\n\nfunc Do() {}\n")})
+	if !sh.lspInput(ui.InputEvent{Kind: ui.InputKeyDown, Key: ui.KeyF, Mods: ui.Alt | ui.Shift}) {
+		t.Fatal("⌥⇧F is taken")
+	}
+	if !sh.lspInput(ui.InputEvent{Kind: ui.InputText, Text: "Ï"}) {
+		t.Fatal("the Option character that follows is taken too")
+	}
+	if sh.lspInput(ui.InputEvent{Kind: ui.InputText, Text: "x"}) {
+		t.Fatal("only that one character is dropped; later typing is the editor's")
+	}
+	sh.lspInput(ui.InputEvent{Kind: ui.InputKeyDown, Key: ui.KeyF, Mods: ui.Alt | ui.Shift})
+	sh.lspInput(ui.InputEvent{Kind: ui.InputKeyDown, Key: ui.KeyA})
+	if sh.lspInput(ui.InputEvent{Kind: ui.InputText, Text: "a"}) {
+		t.Fatal("a key after it clears the pending drop")
+	}
+}
+
 func TestLspWordAtFindsTheIdentifierAroundTheCaret(t *testing.T) {
 	b := editor.NewBuffer("var héllo_1 = 2\n")
 	for off, want := range map[int]string{4: "héllo_1", 11: "héllo_1", 12: "héllo_1", 5: "héllo_1", 3: "var"} {

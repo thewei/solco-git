@@ -141,6 +141,37 @@ func TestSaveAsInsideTheRepositoryOpensTheNewFileAndAsksNothingMore(t *testing.T
 	}
 }
 
+// The save panel hands back the path the way the user walked to it, which may
+// be a symlink the repository root does not name (/tmp for /private/tmp): the
+// destination is still inside the repository and the new file opens by its
+// real path (found in a real window, 2026-11-13: it was taken for a copy).
+func TestSaveAsByASymlinkToTheRepositoryIsStillInside(t *testing.T) {
+	_, pump, sh, tt, path := editShell(t, map[string][]byte{"a.txt": []byte("one\n")}, "a.txt")
+	sh.toggleEditing()
+	typeAtEnd(sh, "two\n")
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(filepath.Dir(path), alias); err != nil {
+		t.Fatal(err)
+	}
+	treeHas := func(name string) bool {
+		for _, en := range sh.rightPanel.cachedDirEntries[sh.rightPanel.currentRoot] {
+			if en.Name == name {
+				return true
+			}
+		}
+		return false
+	}
+	pump.until(t, "the Files tree is loaded", func() bool { return treeHas("a.txt") })
+	sh.saveAsTo(filepath.Join(alias, "b.txt"))
+	settle(tt, pump, 3)
+	real := filepath.Join(sh.dir, "b.txt")
+	pump.until(t, "b.txt open by its real path", func() bool { return sh.rightPanel.previewPlanned == real && !sh.rightPanel.nativeTextLoading })
+	pump.until(t, "the Files tree lists b.txt", func() bool { return treeHas("b.txt") })
+	if read(t, real) != "one\ntwo\n" || sh.fileDirty() {
+		t.Errorf("inside: copy %q dirty=%v", read(t, real), sh.fileDirty())
+	}
+}
+
 func TestSaveAsOutsideTheRepositoryOnlyWritesACopy(t *testing.T) {
 	_, _, sh, _, path := editShell(t, map[string][]byte{"a.txt": []byte("one\n")}, "a.txt")
 	sh.toggleEditing()

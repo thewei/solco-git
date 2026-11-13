@@ -46,6 +46,10 @@ type lspState struct {
 	// renameAt is the caret it was asked at.
 	rename   *lspRenameJob
 	renameAt int
+	// dropText is set by a key the editor was spared (⌥⇧F): macOS types the
+	// key's Option character ("Ï") right after a taken keyDown, and that text
+	// is dropped too.
+	dropText bool
 	// resolve, when set (tests), replaces the installed-server lookup.
 	resolve func(lsp.Spec) []string
 }
@@ -299,10 +303,21 @@ func (s *Shell) underRoot(abs string) (string, bool) {
 	if r, err := filepath.EvalSymlinks(s.dir); err == nil && r != s.dir {
 		roots = append(roots, r)
 	}
+	// A path can come by a symlink the root does not name (a save panel's
+	// /tmp/… for a repository opened as /private/tmp/…): try where it really
+	// is too. The file itself may not exist yet, so resolve its folder.
+	paths := []string{abs}
+	if dir, err := filepath.EvalSymlinks(filepath.Dir(abs)); err == nil {
+		if real := filepath.Join(dir, filepath.Base(abs)); real != abs {
+			paths = append(paths, real)
+		}
+	}
 	for _, root := range roots {
-		rel, err := filepath.Rel(root, abs)
-		if err == nil && rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-			return rel, true
+		for _, p := range paths {
+			rel, err := filepath.Rel(root, p)
+			if err == nil && rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				return rel, true
+			}
 		}
 	}
 	return "", false
