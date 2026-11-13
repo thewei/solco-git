@@ -93,9 +93,9 @@ func main() {
 	quitting := false
 	forceQuit := false
 	mygo.App.OnBeforeQuit(func(e *mygo.QuitEvent) {
-		// Unsaved edits in a Files buffer are not on disk: hold the quit, bring
-		// the window forward and ask (Quit Anyway comes back through here).
-		if !forceQuit && len(window.UnsavedEdits()) > 0 {
+		// Unsaved edits in a Files buffer, or a process running in a terminal
+		// drawer, would be lost: hold the quit, bring the window forward and ask (Quit Anyway comes back through here).
+		if !forceQuit && window.QuitNeedsAsk() {
 			e.PreventDefault()
 			window.AskQuit(func() { forceQuit = true; mygo.App.Quit() })
 			raise()

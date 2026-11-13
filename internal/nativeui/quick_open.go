@@ -18,6 +18,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
+	"github.com/egoist/mygo/ui/markdown"
 	"github.com/thewei/solco-gitkit/filesview"
 )
 
@@ -35,9 +36,10 @@ const (
 
 // quickOpenRow is one result: a file, and for a text hit the line.
 type quickOpenRow struct {
-	rel               string // slash-separated, relative to the root
-	line, col, length int    // line from 1; 0 for a file row
-	text              string // the matching line, for a text hit
+	rel               string   // slash-separated, relative to the root
+	line, col, length int      // line from 1; 0 for a file row
+	text              string   // the matching line, for a text hit
+	hl                [][2]int // where the query matched in rel (a file row) or in text (a text hit)
 }
 
 // quickOpenState is the Files / Text tabs' results and preview. The rows
@@ -113,7 +115,7 @@ func (w *Window) quickOpenSync(sh *Shell, q *quickLaunch) {
 		default:
 			hits, total := filesview.MatchFiles(idx.index, query, quickOpenRows)
 			for _, h := range hits {
-				qo.rows = append(qo.rows, quickOpenRow{rel: h})
+				qo.rows = append(qo.rows, quickOpenRow{rel: h, hl: quickMatchRanges(h, query)})
 			}
 			qo.total = total
 		}
@@ -158,7 +160,8 @@ func (w *Window) quickOpenRunText(sh *Shell, qo *quickOpenState, root, query str
 				if m.Start < 0 || length < 0 {
 					length = 0
 				}
-				qo.rows = append(qo.rows, quickOpenRow{rel: f.Path, line: m.Line, col: m.Col, length: length, text: m.Text})
+				qo.rows = append(qo.rows, quickOpenRow{rel: f.Path, line: m.Line, col: m.Col, length: length, text: m.Text,
+					hl: quickTextRanges(m.Text, cq.Pattern)})
 			}
 		}
 		qo.total = res.Matches
@@ -347,6 +350,7 @@ func (w *Window) quickOpenBody(c *ui.Context, q *quickLaunch, k *gorexColors) {
 func (w *Window) quickOpenRowView(c *ui.Context, k *gorexColors, row *quickOpenRow, selected bool, i int) ui.Element {
 	t := c.Theme()
 	tokens := designTokens(t.Dark)
+	mark := markdown.DefaultTheme(t).Mark
 	name := filepath.Base(row.rel)
 	dir := ""
 	if d := filepath.Dir(row.rel); d != "." {
@@ -363,16 +367,31 @@ func (w *Window) quickOpenRowView(c *ui.Context, k *gorexColors, row *quickOpenR
 			ui.Icon(c, iconFile).Size(15, 15).TextColor(t.TextMuted).Shrink(0).PassThrough()
 			ui.Column(c).Grow(1).MinWidth(0).Children(func() {
 				ui.Row(c).Gap(6).AlignItems(ui.Center).PassThrough().Children(func() {
-					ui.Text(c, name).FontSize(Typography().Section).SingleLine().Shrink(0).PassThrough()
+					if cut := len(row.rel) - len(name); row.line == 0 && len(row.hl) > 0 {
+						ui.RichText(c, markedSpans(row.rel, cut, len(row.rel), row.hl, mark)...).
+							FontSize(Typography().Section).SingleLine().Shrink(0).PassThrough()
+					} else {
+						ui.Text(c, name).FontSize(Typography().Section).SingleLine().Shrink(0).PassThrough()
+					}
 					if row.line > 0 {
 						ui.Text(c, ":"+itoa(row.line)).FontSize(Typography().BodySmall).TextColor(t.TextMuted).SingleLine().Shrink(0).PassThrough()
 					}
-					ui.Text(c, dir).FontSize(Typography().BodySmall).TextColor(t.TextMuted).SingleLine().
-						Ellipsis("…").Grow(1).MinWidth(0).PassThrough()
+					if row.line == 0 && len(row.hl) > 0 && dir != "" {
+						ui.RichText(c, markedSpans(row.rel, 0, len(dir), row.hl, mark)...).FontSize(Typography().BodySmall).
+							TextColor(t.TextMuted).SingleLine().Ellipsis("…").Grow(1).MinWidth(0).PassThrough()
+					} else {
+						ui.Text(c, dir).FontSize(Typography().BodySmall).TextColor(t.TextMuted).SingleLine().
+							Ellipsis("…").Grow(1).MinWidth(0).PassThrough()
+					}
 				})
 				if row.text != "" {
-					ui.Text(c, row.text).Font(gdCodeFont()).FontSize(Typography().BodySmall).TextColor(t.TextMuted).
-						SingleLine().Ellipsis("…").MinWidth(0).PassThrough()
+					if len(row.hl) > 0 {
+						ui.RichText(c, markedSpans(row.text, 0, len(row.text), row.hl, mark)...).Font(gdCodeFont()).
+							FontSize(Typography().BodySmall).TextColor(t.TextMuted).SingleLine().Ellipsis("…").MinWidth(0).PassThrough()
+					} else {
+						ui.Text(c, row.text).Font(gdCodeFont()).FontSize(Typography().BodySmall).TextColor(t.TextMuted).
+							SingleLine().Ellipsis("…").MinWidth(0).PassThrough()
+					}
 				}
 			})
 		})

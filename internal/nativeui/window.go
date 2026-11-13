@@ -80,6 +80,8 @@ type Window struct {
 	// quitAsk is set while a quit waits on unsaved edits (files_edit.go); the
 	// quit it holds is run when the user chooses to quit anyway.
 	quitAsk func()
+	// quitProcs is how many terminals had a process running when the quit was held.
+	quitProcs int
 
 	// recentBranch is each recent repository's current branch, read once in
 	// the background for the welcome page and Quick Launch; recentAsked marks

@@ -172,3 +172,34 @@ func TestTerminalShowsTheExitCodeWhenTheShellEnds(t *testing.T) {
 		t.Errorf("the head says how it ended: code=%d texts=%q", d.exitCode, tt.Texts())
 	}
 }
+
+func TestQuitAsksWhileATerminalProcessRunsAndNotWhenIdle(t *testing.T) {
+	w, pump, sh, tt, _ := termShell(t)
+	pump.until(t, "the shell to be up", func() bool { return sh.term.pidFile != "" && fileHas(sh.term.pidFile) })
+	if w.QuitNeedsAsk() {
+		t.Fatal("an idle shell does not hold a quit")
+	}
+	runSleep(t, pump, sh, "31.73")
+	if !w.QuitNeedsAsk() || w.BusyTerminals() != 1 {
+		t.Fatalf("a running process holds the quit: busy=%d", w.BusyTerminals())
+	}
+	quit := 0
+	w.AskQuit(func() { quit++ })
+	settle(tt, pump, 3)
+	if !tt.HasText("Quit with a running process?") || !tt.HasText("1 terminal still has a process running") {
+		t.Fatalf("the sheet says what would end: %q", tt.Texts())
+	}
+	saveEvidence(t, "quit-running-process", tt)
+	tt.Click("Cancel")
+	settle(tt, pump, 3)
+	if quit != 0 || w.quitAsk != nil || !sleeping("31.73") {
+		t.Fatalf("Cancel changes nothing: quit=%d sleeping=%v", quit, sleeping("31.73"))
+	}
+	w.AskQuit(func() { quit++ })
+	settle(tt, pump, 3)
+	tt.Click("Quit Anyway")
+	settle(tt, pump, 3)
+	if quit != 1 {
+		t.Fatalf("Quit Anyway quits: %d", quit)
+	}
+}

@@ -498,10 +498,29 @@ func (w *Window) UnsavedEdits() []string {
 	return names
 }
 
-// AskQuit holds a quit that would lose edits: the window comes forward with a
+// BusyTerminals counts the workspaces whose terminal drawer has a process
+// running under its shell (it runs pgrep once per terminal: asked when a quit
+// is attempted, never per frame).
+func (w *Window) BusyTerminals() int {
+	n := 0
+	for _, ws := range w.workspaces {
+		if ws.sh.termBusy() {
+			n++
+		}
+	}
+	return n
+}
+
+// QuitNeedsAsk reports whether a quit would lose unsaved edits or end a
+// terminal's running process.
+func (w *Window) QuitNeedsAsk() bool {
+	return len(w.UnsavedEdits()) > 0 || w.BusyTerminals() > 0
+}
+
+// AskQuit holds a quit that would lose work: the window comes forward with a
 // sheet, and quit runs only when the user chooses Quit Anyway.
 func (w *Window) AskQuit(quit func()) {
-	w.onUI(func() { w.quitAsk = quit })
+	w.onUI(func() { w.quitAsk, w.quitProcs = quit, w.BusyTerminals() })
 }
 
 // quitConfirm is the sheet AskQuit opens (Cancel last: Enter dismisses safely).
@@ -509,14 +528,28 @@ func (w *Window) quitConfirm(c *ui.Context) {
 	if w.quitAsk == nil {
 		return
 	}
-	names := w.UnsavedEdits()
-	if len(names) == 0 {
+	names, procs := w.UnsavedEdits(), w.quitProcs
+	if len(names) == 0 && procs == 0 {
 		w.quitAsk = nil
 		return
 	}
 	open := true
-	msg := "Your unsaved edits in “" + strings.Join(names, "”, “") + "” will be lost."
-	switch ui.AlertDialog(c, &open, "Quit with unsaved edits?", msg, "Quit Anyway", "Cancel") {
+	var parts []string
+	if len(names) > 0 {
+		parts = append(parts, "Your unsaved edits in “"+strings.Join(names, "”, “")+"” will be lost.")
+	}
+	if procs > 0 {
+		parts = append(parts, itoa(procs)+" terminal"+pluralS(procs)+" still "+map[bool]string{true: "has", false: "have"}[procs == 1]+
+			" a process running; quitting ends "+map[bool]string{true: "it", false: "them"}[procs == 1]+".")
+	}
+	title := "Quit with unsaved edits?"
+	switch {
+	case procs > 0 && len(names) > 0:
+		title = "Quit with unsaved work?"
+	case procs > 0:
+		title = "Quit with a running process?"
+	}
+	switch ui.AlertDialog(c, &open, title, strings.Join(parts, " "), "Quit Anyway", "Cancel") {
 	case 0:
 		quit := w.quitAsk
 		w.quitAsk = nil

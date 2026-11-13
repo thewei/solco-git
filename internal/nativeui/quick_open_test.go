@@ -9,6 +9,7 @@ package nativeui
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -133,5 +134,58 @@ func TestQuickTabsKeepTheQueryAndWithoutAWorkspaceTheFirstIsRepos(t *testing.T) 
 	settle(tt2, pump2, 3)
 	if w2.quick.tab != quickTabText || w2.quick.query != "main" {
 		t.Errorf("a tab switch keeps the words: tab=%d query=%q", w2.quick.tab, w2.quick.query)
+	}
+}
+
+func TestQuickMatchRangesMarkWhatMadeTheRowAHit(t *testing.T) {
+	text := func(p string, rs [][2]int) string {
+		var out []string
+		for _, r := range rs {
+			out = append(out, p[r[0]:r[1]])
+		}
+		return strings.Join(out, "|")
+	}
+	for _, c := range []struct{ path, query, want string }{
+		{"src/main.go", "main", "main"},                   // a name hit
+		{"src/main.go", "mgo", "m|go"},                    // a scattered subsequence in the name (g and o touch, so they join)
+		{"main/zeta.txt", "main", "main"},                 // a folder hit
+		{"src/server/handler.go", "serv han", "serv|han"}, // two words
+		{"a/Readme.MD", "readme", "Readme"},               // case is folded, the original text is marked
+		{"src/main.go", "ain.g", "ain.g"},                 // a substring with punctuation
+	} {
+		if got := text(c.path, quickMatchRanges(c.path, c.query)); got != c.want {
+			t.Errorf("%q in %q marks %q, want %q", c.query, c.path, got, c.want)
+		}
+	}
+	if got := quickMatchRanges("İstanbul/x.go", "x"); got != nil {
+		t.Errorf("a path whose case folding moves offsets is not marked: %v", got)
+	}
+	if got := quickTextRanges("Needle in a NEEDLE", "needle"); len(got) != 2 || got[0] != [2]int{0, 6} || got[1] != [2]int{12, 18} {
+		t.Errorf("every occurrence of a text query: %v", got)
+	}
+}
+
+func TestQuickRowsCarryTheirMarksAndDrawThem(t *testing.T) {
+	w, pump, _, tt, _ := quickShell(t)
+	w.openQuickTab(quickTabFiles)
+	settle(tt, pump, 3)
+	tt.Type("mgo")
+	settle(tt, pump, 4)
+	rows := w.quick.qo.rows
+	if len(rows) == 0 || len(rows[0].hl) != 2 {
+		t.Fatalf("each row knows what matched: %+v", rows)
+	}
+	if !tt.HasText("main.go") {
+		t.Errorf("a marked name is still readable text: %q", tt.Texts())
+	}
+	saveEvidence(t, "quick-files-marks", tt)
+
+	w.openQuickTab(quickTabText)
+	settle(tt, pump, 3)
+	tt.Type("needle")
+	settle(tt, pump, 4)
+	pump.until(t, "the text hit", func() bool { return len(w.quick.qo.rows) > 0 })
+	if r := w.quick.qo.rows[0]; len(r.hl) == 0 || !strings.EqualFold(r.text[r.hl[0][0]:r.hl[0][1]], "needle") {
+		t.Errorf("a text hit marks the query in its line: %+v", r)
 	}
 }
