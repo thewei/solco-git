@@ -50,6 +50,19 @@ func (s *Shell) gitBusy() bool {
 // tree. A path outside the repository is ignored.
 func (s *Shell) revealFile(file string) { s.showFile(file, s.openFilePreview) }
 
+// locateFile is revealFile that stops short of opening: Files in front, the
+// folders above the file open, its row marked and scrolled into view, the file
+// open on the right (if any) left as it is. A path outside the repository is
+// ignored.
+func (s *Shell) locateFile(file string) {
+	s.showFile(file, func(abs string) {
+		st := &s.rightPanel
+		s.filesGit.changedOnly = false // the row must be in the tree
+		s.filesSearch.query = ""
+		st.located, st.locateScroll = abs, abs
+	})
+}
+
 // revealFileAt is revealFile landing on a line (0-based) and column.
 func (s *Shell) revealFileAt(file string, line, col, length int) {
 	s.showFile(file, func(abs string) { s.openFileAt(abs, line, col, length) })

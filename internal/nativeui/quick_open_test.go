@@ -189,3 +189,56 @@ func TestQuickRowsCarryTheirMarksAndDrawThem(t *testing.T) {
 		t.Errorf("a text hit marks the query in its line: %+v", r)
 	}
 }
+
+func TestQuickCommandReturnLocatesInTheTreeWithoutOpeningAndOptionReturnShowsInFinder(t *testing.T) {
+	w, pump, sh, tt, root := quickShell(t)
+	zeta := filepath.Join(root, "main", "zeta.txt")
+	sh.revealFile(zeta)
+	pump.until(t, "zeta open", func() bool { return sh.rightPanel.selectedFilePath == zeta })
+	settle(tt, pump, 3)
+	sh.filesGit.changedOnly = true // a tree that would hide the row
+
+	w.openQuickTab(quickTabFiles)
+	settle(tt, pump, 3)
+	tt.Type("handler")
+	settle(tt, pump, 4)
+	handler := filepath.Join(root, "src", "server", "handler.go")
+	tt.Key(ui.Super, ui.KeyEnter)
+	settle(tt, pump, 4)
+	st := &sh.rightPanel
+	if w.quick.open || sh.currentView() != viewFiles {
+		t.Fatalf("⌘↵ closes the palette and shows Files: open=%v view=%v", w.quick.open, sh.currentView())
+	}
+	if st.selectedFilePath != zeta {
+		t.Errorf("locating opens nothing: the open file is still %q", st.selectedFilePath)
+	}
+	if st.located != handler || !st.expandedDirs[filepath.Join(root, "src")] || !st.expandedDirs[filepath.Join(root, "src", "server")] {
+		t.Errorf("the row is marked and its folders are open: located=%q", st.located)
+	}
+	if sh.filesGit.changedOnly {
+		t.Error("the row must be in the tree: Changed → All")
+	}
+	if st.locateScroll != "" || !tt.HasText("handler.go") {
+		t.Errorf("the row was drawn and scrolled to once: scroll=%q", st.locateScroll)
+	}
+	saveEvidence(t, "quick-locate", tt)
+
+	sh.openFilePreview(handler)
+	if st.located != "" {
+		t.Error("opening a file ends the locating")
+	}
+
+	var shown string
+	old := revealInFinder
+	revealInFinder = func(path string) { shown = path }
+	t.Cleanup(func() { revealInFinder = old })
+	w.openQuickTab(quickTabFiles)
+	settle(tt, pump, 3)
+	tt.Type("zeta")
+	settle(tt, pump, 4)
+	tt.Key(ui.Alt, ui.KeyEnter)
+	settle(tt, pump, 3)
+	if w.quick.open || shown != zeta || st.selectedFilePath != handler {
+		t.Errorf("⌥↵ shows the file in Finder and opens nothing: open=%v shown=%q selected=%q", w.quick.open, shown, st.selectedFilePath)
+	}
+}

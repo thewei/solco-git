@@ -17,7 +17,11 @@ type rightPanelState struct {
 	loadingDirs      map[string]bool
 	currentRoot      string
 	selectedFilePath string
-	filesGen         atomic.Uint64
+	// located is a file the tree points at without having opened it (⌘↵ in
+	// quick open): it wears the selection face and locateScroll brings it into
+	// view once. Opening any file clears it.
+	located, locateScroll string
+	filesGen              atomic.Uint64
 
 	// Ignore state (FILES-01): the merged fixed-name + git set applies per
 	// root; showIgnored reveals everything the rules hide.

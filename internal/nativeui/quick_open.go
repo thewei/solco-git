@@ -2,7 +2,7 @@ package nativeui
 
 /**
  * [INPUT]: quick_launch.go 的浮层与 quickLaunch 状态、files_search.go 的文件索引（filesSearchEnsureIndex）、filesview.MatchFiles / SearchContent、editor.State
- * [OUTPUT]: 快开的 Files 与 Text 两个标签（2026-11-13 决定第 (3) 条，E2）：⌘P（Files：当前工作区的文件名，子序列匹配，空输入列最近打开的）、⇧⌘F（Text：内容搜索，停顿后才起进程）；↑↓ 选、↵ 打开（Text 落在命中行）、右侧只读预览（Files 看开头，Text 落在命中行）；Repos 标签就是原 Quick Launch（⇧⌘O）
+ * [OUTPUT]: 快开的 Files 与 Text 两个标签（2026-11-13 决定第 (3) 条，E2）：⌘P（Files：当前工作区的文件名，子序列匹配，空输入列最近打开的）、⇧⌘F（Text：内容搜索，停顿后才起进程）；↑↓ 选、↵ 打开（Text 落在命中行）、⌘↵ 在 Files 树里定位但不打开（切到 Files、展开、行标成选中并滚到位，右侧已打开的文件不动）、⌥↵ 在 Finder 里显示、右侧只读预览（Files 看开头，Text 落在命中行）；Repos 标签就是原 Quick Launch（⇧⌘O）
  * [POS]: 不需要 fzf：匹配是 filesview 的 Go 实现；索引与侧栏搜索共用同一份（刷新 / 文件操作后一并失效）；预览读文件的前 256 KiB，不是 Files 视图的那一个编辑器
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -184,6 +184,11 @@ func (w *Window) quickOpenRunText(sh *Shell, qo *quickOpenState, root, query str
 	}()
 }
 
+// quickOpenAbs is a row's absolute path.
+func (w *Window) quickOpenAbs(sh *Shell, row quickOpenRow) string {
+	return filepath.Join(sh.rightPanel.currentRoot, filepath.FromSlash(row.rel))
+}
+
 // quickOpenAct opens a row in the Files view: the file, or the line a text
 // hit points at.
 func (w *Window) quickOpenAct(sh *Shell, row quickOpenRow) {
@@ -283,6 +288,18 @@ func (w *Window) quickOpenBody(c *ui.Context, q *quickLaunch, k *gorexColors) {
 		q.sel = max(q.sel-1, 0)
 	}
 	q.sel = clamp(q.sel, 0, max(n-1, 0))
+	if n > 0 {
+		switch {
+		case field.Shortcut(ui.Super, ui.KeyEnter):
+			w.quick.open = false
+			sh.locateFile(w.quickOpenAbs(sh, qo.rows[q.sel]))
+			return
+		case field.Shortcut(ui.Alt, ui.KeyEnter):
+			w.quick.open = false
+			sh.openExternalPathParent(w.quickOpenAbs(sh, qo.rows[q.sel]))
+			return
+		}
+	}
 	if field.Submitted() && n > 0 {
 		w.quickOpenAct(sh, qo.rows[q.sel])
 		return
@@ -338,6 +355,8 @@ func (w *Window) quickOpenBody(c *ui.Context, q *quickLaunch, k *gorexColors) {
 	}
 	ui.Row(c).FillWidth().Padding(4, 10, 0).Gap(12).Children(func() {
 		ui.Text(c, "↵ open").FontSize(Typography().Caption).TextColor(t.TextMuted)
+		ui.Text(c, "⌘↵ locate in Files").FontSize(Typography().Caption).TextColor(t.TextMuted)
+		ui.Text(c, "⌥↵ Finder").FontSize(Typography().Caption).TextColor(t.TextMuted)
 		ui.Text(c, "↑↓ move").FontSize(Typography().Caption).TextColor(t.TextMuted)
 		ui.Text(c, "esc close").FontSize(Typography().Caption).TextColor(t.TextMuted)
 		ui.Spacer(c)
