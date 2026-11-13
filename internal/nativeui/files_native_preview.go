@@ -379,6 +379,7 @@ func (s *Shell) nativePreviewBody(c *ui.Context) {
 		// repaints an open file without reloading it.
 		st.nativeCode.Theme = codeEditorTheme(c.Theme())
 		s.lspTick()
+		s.autoSaveTick()
 		ui.Column(c).FillWidth().Grow(1).MinHeight(0).Children(func() {
 			s.editBanner(c)
 			editor.View(c, st.nativeCode).FillWidth().Grow(1).MinHeight(0)

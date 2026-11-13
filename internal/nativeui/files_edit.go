@@ -2,7 +2,7 @@ package nativeui
 
 /**
  * [INPUT]: files_native_preview.go 的 editor.State（预览里那一个）、filesview.ReadText、gitworkbench 快照（applyGitSnapshot 每次调 syncEditedFile）、ui.AlertDialog
- * [OUTPUT]: Files 里的就地编辑（2026-11-13 决定第 (1)(2) 条）：默认只读、头部铅笔钮开关编辑；⌘S 原子写盘（同目录临时文件 + 重命名，保留权限与换行，符号链接写到目标）；Revert；"已打开且脏"的缓冲区在文件切换、Git 写操作、重命名/删除前先问（Save and Continue / Discard Edits / Cancel）；磁盘被别人改写时干净缓冲区静默重载、脏缓冲区出一条 Reload from disk / Keep mine 的横条，不自动处理
+ * [OUTPUT]: Files 里的就地编辑（2026-11-13 决定第 (1)(2) 条）：默认只读、头部铅笔钮开关编辑；⌘S 原子写盘（同目录临时文件 + 重命名，保留权限与换行，符号链接写到目标）；Revert；"已打开且脏"的缓冲区在文件切换、Git 写操作、重命名/删除前先问（Save and Continue / Discard Edits / Cancel）；磁盘被别人改写时干净缓冲区静默重载、脏缓冲区出一条 Reload from disk / Keep mine / Compare… 的横条（文件已不在时是 Save As…），不自动处理；自动保存、Compare、Save As 见 files_edit_more.go
  * [POS]: 编辑器自己不跑 git：保存后 Changes 的变化来自快照刷新（saveEdit 只让缓存失效）。未保存的编辑不是 Git 状态，关掉即丢，不进 Safety Journal
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -52,6 +52,15 @@ type fileEditState struct {
 	askOpen bool
 	askCont string
 	askThen func()
+
+	// Auto-save: the buffer version the timer was armed for and the timer.
+	autoVer   uint64
+	autoTimer *time.Timer
+	// Compare…: the gutter shows the file on disk (cmpSig is its signature
+	// when read) instead of HEAD (headBase is what to put back).
+	comparing bool
+	cmpSig    diskSig
+	headBase  *editor.Buffer
 }
 
 // editResetFor drops the edit state when the preview moves to another file.
@@ -108,7 +117,10 @@ func (s *Shell) setEditing(on bool) {
 
 // saveEdit writes the buffer to disk (⌘S, the Save button) and reports
 // whether the file now matches it. Nothing to write counts as saved.
-func (s *Shell) saveEdit() bool {
+func (s *Shell) saveEdit() bool { return s.save(false) }
+
+// save is saveEdit; quiet (auto-save) leaves out the "Saved" note.
+func (s *Shell) save(quiet bool) bool {
 	st, e := &s.rightPanel, &s.edit
 	if !s.canEdit() || !e.editing || !st.nativeCode.Buffer.Modified() {
 		return true
@@ -140,12 +152,11 @@ func (s *Shell) saveEdit() bool {
 		e.sig = sig
 	}
 	s.refreshDerivedViews()
-	if s.git != nil && s.git.root != "" {
-		s.git.cache.Invalidate(s.git.root)
-		s.ensureGitSnapshot(true)
-	}
+	s.afterWrite()
 	slog.Info("file saved")
-	s.pendingToast = "Saved " + name
+	if !quiet {
+		s.pendingToast = "Saved " + name
+	}
 	return true
 }
 
@@ -172,9 +183,19 @@ func writeFileAtomic(path, root string, snap editor.Snapshot) error {
 // writeAtomic is writeFileAtomic for any writer of the new bytes (a rename
 // writes the files it changes byte for byte, line endings and all).
 func writeAtomic(path, root string, write func(io.Writer) error) error {
+	return writeAtomicOpt(path, root, false, write)
+}
+
+// writeAtomicOpt is writeAtomic that, with create, may also make the file
+// (permissions 0644) — Save As. An empty root allows any place.
+func writeAtomicOpt(path, root string, create bool, write func(io.Writer) error) error {
 	target := path
 	if resolved, err := filepath.EvalSymlinks(path); err == nil {
 		target = resolved
+	} else if create {
+		if dir, derr := filepath.EvalSymlinks(filepath.Dir(path)); derr == nil {
+			target = filepath.Join(dir, filepath.Base(path))
+		}
 	}
 	if root != "" {
 		if canon, err := filepath.EvalSymlinks(root); err == nil {
@@ -184,8 +205,10 @@ func writeAtomic(path, root string, write func(io.Writer) error) error {
 			}
 		}
 	}
-	info, err := os.Stat(target)
-	if err != nil {
+	perm := os.FileMode(0o644)
+	if info, err := os.Stat(target); err == nil {
+		perm = info.Mode().Perm()
+	} else if !create || !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 	tmp, err := os.CreateTemp(filepath.Dir(target), ".solcogit-save-*")
@@ -201,7 +224,7 @@ func writeAtomic(path, root string, write func(io.Writer) error) error {
 	if err := write(tmp); err != nil {
 		return fail(err)
 	}
-	if err := tmp.Chmod(info.Mode().Perm()); err != nil {
+	if err := tmp.Chmod(perm); err != nil {
 		return fail(err)
 	}
 	if err := tmp.Sync(); err != nil {
@@ -263,7 +286,7 @@ func (s *Shell) reloadFromDisk() {
 	if sig, ok := sigOf(e.path); ok {
 		e.sig = sig
 	}
-	e.diskChanged, e.gone = false, false
+	e.diskChanged, e.gone, e.comparing, e.headBase = false, false, false, nil
 	s.refreshDerivedViews()
 	s.refreshDiffBase(e.path)
 }
@@ -303,6 +326,7 @@ func (s *Shell) keepMine() {
 		e.gone = false
 	}
 	e.diskChanged = false
+	s.endCompare()
 }
 
 // syncEditedFile compares the open file with the disk (every snapshot, so
@@ -322,6 +346,9 @@ func (s *Shell) syncEditedFile() {
 	case sig == e.sig:
 	case s.fileDirty():
 		e.diskChanged = true
+		if e.comparing && sig != e.cmpSig {
+			s.compareWithDisk()
+		}
 	default:
 		if st.nativeCode != nil {
 			s.reloadFromDisk()
@@ -431,15 +458,29 @@ func (s *Shell) editBanner(c *ui.Context) {
 	if e.gone {
 		text = name + " is gone from disk. Your edits stay here until you leave this file."
 	}
+	if e.comparing {
+		text = "Comparing your edits with " + name + " on disk — the gutter marks where they differ."
+	}
 	ui.Row(c).FillWidth().Padding(sp.S, sp.XL).Gap(sp.M).AlignItems(ui.Center).
 		Background(tokens.StatusBackground(ToneAttention, t.Dark)).Children(func() {
 		ui.Text(c, text).FontSize(typ.Body).Grow(1).MinWidth(0)
-		if !e.gone {
+		if e.gone {
+			if regularButton(c, "Save As…").Clicked() {
+				s.saveAs()
+			}
+		} else {
 			if regularButton(c, "Reload from disk").Clicked() {
 				s.reloadFromDisk()
 			}
 			if regularButton(c, "Keep mine").Clicked() {
 				s.keepMine()
+			}
+			if e.comparing {
+				if regularButton(c, "Done").Clicked() {
+					s.endCompare()
+				}
+			} else if regularButton(c, "Compare…").Clicked() {
+				s.compareWithDisk()
 			}
 		}
 	})

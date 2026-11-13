@@ -111,6 +111,7 @@ func (w *Window) MenuBar() *mygo.Menu {
 		repo("Find in Files…", accelFindInFiles, func(*Shell) { w.openQuickTab(quickTabText) }),
 		mygo.Separator(),
 		repo("Save", accelSave, func(sh *Shell) { sh.saveRequested() }),
+		repo("Save As…", accelSaveAs, func(sh *Shell) { sh.saveAs() }),
 		mygo.Separator(),
 		do("Close Window", accelCloseWindow, w.closeWindow),
 		mygo.Separator(),

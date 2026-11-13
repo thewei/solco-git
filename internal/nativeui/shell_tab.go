@@ -118,6 +118,9 @@ func (s *Shell) Close() {
 	s.closeStaticPreview()
 	s.closeTerminal()
 	s.lspClose()
+	if t := s.edit.autoTimer; t != nil {
+		t.Stop()
+	}
 }
 
 // refreshCurrent is ⌘R: re-read what the front view shows, and the remote's

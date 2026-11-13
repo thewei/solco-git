@@ -33,6 +33,7 @@ const (
 	accelFiles         = "CmdOrCtrl+3"
 	accelOpen          = "CmdOrCtrl+O"
 	accelSave          = "CmdOrCtrl+S"
+	accelSaveAs        = "CmdOrCtrl+Shift+S"
 	accelQuickLaunch   = "CmdOrCtrl+Shift+O"
 	accelTerminal      = "Ctrl+`"
 	accelGoToFile      = "CmdOrCtrl+P"

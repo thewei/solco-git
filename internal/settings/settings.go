@@ -68,6 +68,9 @@ type WorkbenchSettings struct {
 	// and the Save button write it. Off by default: formatting only happens
 	// when the user chose it (2026-11-13 decision, item 4).
 	FormatOnSave bool `json:"format_on_save,omitempty"`
+	// AutoSave writes the open file one second after typing stops, never while
+	// a Git operation is running. Off by default (2026-11-13 decision, item 1).
+	AutoSave bool `json:"auto_save,omitempty"`
 }
 
 // WindowSettings is the window's restorable state: the workspaces the user
