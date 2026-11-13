@@ -252,6 +252,9 @@ func (w *Window) removeConfirm(c *ui.Context) {
 	if sh.commitDraftPresent() {
 		message = "The commit message you started in it will be lost."
 	}
+	if n := sh.dirtyFileName(); n != "" {
+		message = "Your unsaved edits in “" + n + "” will be lost."
+	}
 	open := true
 	if ui.AlertDialog(c, &open, "Remove “"+pathBase(sh.dir)+"” from Workspaces?", message, "Remove Workspace", "Cancel") == 0 {
 		w.removeAsk = 0

@@ -134,6 +134,10 @@ func (s *Shell) runFilesMutation(kind, target, value string) {
 		if filepath.Base(target) == value {
 			return // nothing to do; close quietly
 		}
+		if s.editUnder(target) && s.fileDirty() {
+			s.pendingToast = "Save or discard the edits in “" + filepath.Base(s.edit.path) + "” first."
+			return
+		}
 		parent := filepath.Dir(target)
 		s.runFilesOp("rename", func() (string, error) {
 			return filesview.Rename(root, rel, value)
@@ -154,6 +158,10 @@ func (s *Shell) runFilesDelete(target string) {
 	}
 	rel, err := filepath.Rel(root, target)
 	if err != nil {
+		return
+	}
+	if s.editUnder(target) && s.fileDirty() {
+		s.pendingToast = "Save or discard the edits in “" + filepath.Base(s.edit.path) + "” first."
 		return
 	}
 	name := filepath.Base(target)

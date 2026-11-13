@@ -18,6 +18,7 @@ import (
 func (w *Window) windowDialogs(c *ui.Context) {
 	w.settingsSheet(c)
 	w.removeConfirm(c)
+	w.quitConfirm(c)
 	w.quickLaunchView(c)
 }
 

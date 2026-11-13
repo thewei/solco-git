@@ -59,6 +59,7 @@ func (s *Shell) applyGitSnapshot(snap *gitworkbench.ChangesSnapshot) {
 		return
 	}
 	s.git.snapshot = snap
+	s.syncEditedFile() // Git or another tool may have rewritten the open file
 	s.changesTree = nil
 	s.gdSetFiles()
 

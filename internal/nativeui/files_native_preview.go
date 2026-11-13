@@ -3,6 +3,7 @@ package nativeui
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
@@ -19,9 +20,12 @@ func (s *Shell) openFilePreview(path string) {
 	if st.selectedFilePath == path {
 		return
 	}
-	st.selectedFilePath = path
-	s.noteRecentFile(path)
-	s.planFilePreview(path)
+	// Unsaved edits are asked about before another file takes the view.
+	s.guardDirty("open another file", func() {
+		st.selectedFilePath = path
+		s.noteRecentFile(path)
+		s.planFilePreview(path)
+	})
 }
 
 // planFilePreview picks the selection's tier (planPreviewTier). The size
@@ -96,6 +100,7 @@ func (s *Shell) claimNativePreview(path string) {
 		s.dropFilesWebview() // the page and its engine process go with the image
 	}
 	st.nativePreviewPath = path
+	s.editResetFor(path)
 	st.nativeText = nil
 	st.nativeCode = nil
 	st.nativeMarkdown = nil
@@ -128,13 +133,14 @@ func (s *Shell) beginNativeText(path string, flavor filesview.Flavor) {
 	runner := s.git.runner
 	gitRoot := s.git.root
 	type loaded struct {
-		preview filesview.Preview
-		buf     *editor.Buffer
-		base    *editor.Buffer
-		md      *markdownPreview
-		svg     *ui.SVG
-		note    string // why a file with a second view has only the source
-		err     error
+		preview  filesview.Preview
+		editable bool // whole, valid UTF-8: safe to write back
+		buf      *editor.Buffer
+		base     *editor.Buffer
+		md       *markdownPreview
+		svg      *ui.SVG
+		note     string // why a file with a second view has only the source
+		err      error
 	}
 	load := func() loaded {
 		preview, err := filesview.ReadText(path, root)
@@ -142,6 +148,7 @@ func (s *Shell) beginNativeText(path string, flavor filesview.Flavor) {
 			return loaded{preview: preview, err: err}
 		}
 		l := loaded{buf: editor.NewBuffer(preview.Content)}
+		l.editable = !preview.Truncated && !strings.ContainsRune(preview.Content, '\uFFFD')
 		l.buf.SetLanguage(editor.LanguageFor(name))
 		if !preview.Truncated {
 			switch tier {
@@ -176,6 +183,8 @@ func (s *Shell) beginNativeText(path string, flavor filesview.Flavor) {
 		st.nativeText = &preview
 		st.nativeMarkdown, st.nativeSVG, st.previewNote = l.md, l.svg, l.note
 		if l.buf != nil {
+			s.edit.editable = l.editable
+			s.edit.sig, _ = sigOf(path)
 			st.nativeCode = &editor.State{
 				Buffer:       l.buf,
 				ReadOnly:     true,
@@ -303,7 +312,7 @@ func (s *Shell) filesPreviewBar(c *ui.Context, selected string) {
 			case st.nativeSVG != nil:
 				rendered, label = "Image", "SVG view"
 			}
-			if rendered != "" {
+			if rendered != "" && !s.edit.editing { // an edit is of the source
 				choice := 0
 				if st.previewSource {
 					choice = 1
@@ -313,6 +322,7 @@ func (s *Shell) filesPreviewBar(c *ui.Context, selected string) {
 				}
 			}
 		}
+		s.editControls(c, selected)
 		s.filesGitControls(c, selected)
 	})
 }
@@ -363,7 +373,10 @@ func (s *Shell) nativePreviewBody(c *ui.Context) {
 		// The theme follows the window each frame: an appearance change
 		// repaints an open file without reloading it.
 		st.nativeCode.Theme = codeEditorTheme(c.Theme())
-		editor.View(c, st.nativeCode).FillWidth().Grow(1).MinHeight(0)
+		ui.Column(c).FillWidth().Grow(1).MinHeight(0).Children(func() {
+			s.editBanner(c)
+			editor.View(c, st.nativeCode).FillWidth().Grow(1).MinHeight(0)
+		})
 	default:
 		ui.Column(c).Grow(1).Center().Children(func() {
 			ui.Spinner(c).Size(16, 16)

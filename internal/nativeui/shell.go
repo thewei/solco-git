@@ -93,6 +93,8 @@ type Shell struct {
 	filesStartInfo filesStartCache
 	// rightPanel holds the Files explorer's cache and preview tiers.
 	rightPanel rightPanelState
+	// edit is the editing state of the open file (files_edit.go).
+	edit fileEditState
 	// filesSearch is the Files sidebar's one search (names | content).
 	filesSearch filesSearchState
 	// staticPreview serves the project root to HTML previews, started by the

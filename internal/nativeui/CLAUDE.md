@@ -39,6 +39,7 @@ Git（复制自 Solco，随 `solco-gitkit` 演进）
 
 Files
 - `page_files.go`、`right_panel*.go`、`files_*.go`：Files 视图——忽略感知的树、原生预览分级（2026-11-08「Files preview: native first」，与 Solco 同一份：`files_markdown.go` 的 `planPreviewTier` 把文本/代码交 `ui/editor`、≤ 2 MiB 的 Markdown 交 MyGo `ui/markdown`（Rendered | Source 一键切换，默认 Rendered；长文档由 `files_markdown_rows.go` 分行，`files_markdown_find.go` 管 ⌘F 查找，`files_markdown_html.go` 把原始 HTML 译成 Markdown 块，`files_markdown_rich.go` 画数学与 Mermaid）、≤ 1 MiB 的 SVG 画出来（Image | Source）、PNG/JPEG/GIF/WebP/BMP 原生解码；只有 AVIF/ICO 经 `files_webview.go` 里 Go 现拼的几百字节页面，底色 `filesWebviewFill` = 窗口画布）、起始页、搜索、文件操作；Quick Look / Copy Path / Reveal in Finder 由 `files_ops.go` 的 `filesPathItems` 给所有文件表面（树行、正文右键、Actions 菜单）。
+- `files_edit.go`（2026-11-13 决定第 (1)(2) 条，E1）：Files 里的就地编辑——文件默认只读，头部铅笔图标钮开关编辑（`fileEditState`，随预览文件重置）；⌘S / Save 原子写盘（同目录临时文件 + 重命名，保留权限与换行，符号链接写到仓库内的目标）；Revert / Reload from disk；有未保存编辑时切文件、做会写工作区的 Git 操作（`dirtySafeOps` 之外的都问）、退出、移除工作区前先问（Save and Continue / Discard Edits / Cancel）；重命名 / 删除含脏文件的路径直接拒绝；`syncEditedFile` 随每次快照比对磁盘：干净缓冲区静默重载，脏缓冲区只出 Reload from disk / Keep mine 条且 Save 拒绝。编辑器自己不跑 git；截断 / 非 UTF-8 / 非文本不可编辑；未实现：自动保存设置、Compare…、另存为、LSP、⌘P、终端（E2–E5）。
 - `files_git.go`：Files 比 Solco 多出的 Git 层——Changed | All、M/U 标记与文件夹点、槽边改动条（对照 HEAD）、Plain | Blame、History、底栏图例；全部读自 git 快照/blame/cat-file。
 
 UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差异）
@@ -68,6 +69,7 @@ UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差�
 - `window_landing_test.go`：冷启动经链接落点——首读之后列表顶上是被点名文件的卡，内容分批读到后也不动，过了揭示窗口选中行仍是它。
 - `window_polish_test.go`：首读之前侧栏说 Reading references… 而不是五个 0；外部改动直接读到、没有「Files changed on disk」提示；窄卡不画 Viewed 框；提交计数按单复数（1 commit）；欢迎页的两句话各占一行。
 - `window_render_test.go`、`files_evidence_test.go`：与设计稿逐屏对照的 PNG 证据（设置 `SOLCOGIT_EVIDENCE` 才落盘）。
+- `files_edit_test.go`：默认只读与铅笔、原子写盘（CRLF / 权限 / 无残留）、符号链接与仓库边界、写失败不动原文件、Git 写操作与切文件前先问（Cancel / Save / Discard 三条路）、磁盘被改写的三种处理与 Save 自查、不可编辑的文件、退出与移除工作区的确认、重命名 / 删除拒绝；每条规则做过变异检查。
 - `files_git_test.go`、`commit_tree_test.go`、`multi_push_test.go`、`image_compare_test.go`：2026-11-07「Solco Git」决定里 Files 一节、按提交看整棵树、多引用推送、图片对比的回归防线。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 ../../CLAUDE.md

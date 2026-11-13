@@ -73,6 +73,9 @@ type Window struct {
 	// removeAsk is the id of the workspace whose removal awaits confirmation.
 	removeAsk int
 	quick     quickLaunch
+	// quitAsk is set while a quit waits on unsaved edits (files_edit.go); the
+	// quit it holds is run when the user chooses to quit anyway.
+	quitAsk func()
 
 	// recentBranch is each recent repository's current branch, read once in
 	// the background for the welcome page and Quick Launch; recentAsked marks
@@ -361,7 +364,7 @@ func (w *Window) moveWorkspace(id, delta int) {
 // something: a commit message being written, or a Git operation still running.
 func (w *Window) workspaceNeedsConfirm(ws *workspace) bool {
 	sh := ws.sh
-	return sh.commitDraftPresent() || sh.gitBusy()
+	return sh.commitDraftPresent() || sh.gitBusy() || sh.fileDirty()
 }
 
 // requestRemoveWorkspace removes workspace i, asking first when it holds a

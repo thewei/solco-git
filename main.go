@@ -91,7 +91,18 @@ func main() {
 	// comes from the app menu (RoleQuit → App.Quit), which fires OnBeforeQuit
 	// before closing windows. The flag tells OnClose the two apart.
 	quitting := false
-	mygo.App.OnBeforeQuit(func(e *mygo.QuitEvent) { quitting = true })
+	forceQuit := false
+	mygo.App.OnBeforeQuit(func(e *mygo.QuitEvent) {
+		// Unsaved edits in a Files buffer are not on disk: hold the quit, bring
+		// the window forward and ask (Quit Anyway comes back through here).
+		if !forceQuit && len(window.UnsavedEdits()) > 0 {
+			e.PreventDefault()
+			window.AskQuit(func() { forceQuit = true; mygo.App.Quit() })
+			raise()
+			return
+		}
+		quitting = true
+	})
 
 	mygo.App.WhenReady(func() {
 		slog.Info("application ready", "log_path", applog.Path())

@@ -24,6 +24,18 @@ const gitOpTimeout = gitworkbench.MutateTimeout
 // the pile, and the payload, bigger).
 const gitNetworkTimeout = gitworkbench.NetworkTimeout
 
+// dirtySafeOps are the operations that never write a tracked file in the
+// working tree (they move refs, remotes, the index or stash entries only), so
+// unsaved edits need no question before them. Every other operation asks.
+var dirtySafeOps = map[string]bool{
+	"Fetch": true, "Push": true, "Push Tag": true, "Stage": true, "Unstage": true,
+	"Set Upstream": true, "Unset Upstream": true, "Create Tag": true, "Delete Tag": true,
+	"Delete Remote Tag": true, "Delete Remote Branch": true, "Delete Branch": true,
+	"Rename Branch": true, "Rename Remote": true, "Remove Remote": true, "Add Remote": true,
+	"Edit Remote": true, "Rename Stash": true, "Drop Stash": true, "Drop All Stashes": true,
+	"Add Worktree": true, "Remove Worktree": true,
+}
+
 // runGitOp runs one repository mutation off the UI lane and reports the
 // outcome as a toast; successful ops refresh the snapshot.
 func (s *Shell) runGitOp(name string, run func(ctx context.Context, root string) (string, error)) {
@@ -43,6 +55,12 @@ func (s *Shell) runGitOpBudget(name string, budget time.Duration, run func(ctx c
 // through "Stash and reapply", whose refusal is not offered that way again.
 func (s *Shell) runGitOpFlow(name string, budget time.Duration, run func(ctx context.Context, root string) (string, error), retried bool) {
 	if s.git == nil || s.git.root == "" {
+		return
+	}
+	// A Git write that may rewrite files in the working tree waits for the
+	// open file's unsaved edits to be settled (2026-11-13 decision, rule 2).
+	if !retried && !dirtySafeOps[name] && s.fileDirty() {
+		s.guardDirty(strings.ToLower(name), func() { s.runGitOpFlow(name, budget, run, retried) })
 		return
 	}
 	if s.git.opBusy {

@@ -32,6 +32,7 @@ const (
 	accelCommits       = "CmdOrCtrl+2"
 	accelFiles         = "CmdOrCtrl+3"
 	accelOpen          = "CmdOrCtrl+O"
+	accelSave          = "CmdOrCtrl+S"
 	accelQuickLaunch   = "CmdOrCtrl+Shift+O"
 	accelCloseWindow   = "CmdOrCtrl+W"
 	accelBack          = "CmdOrCtrl+["

@@ -99,6 +99,8 @@ func (w *Window) MenuBar() *mygo.Menu {
 		{Label: "Open Recent", Submenu: recent},
 		do("Quick Launch…", accelQuickLaunch, w.openQuickLaunch),
 		mygo.Separator(),
+		repo("Save", accelSave, func(sh *Shell) { sh.saveEdit() }),
+		mygo.Separator(),
 		do("Close Window", accelCloseWindow, w.closeWindow),
 		mygo.Separator(),
 		repo("Show in Finder", "", func(sh *Shell) { sh.openExternalPathParent(sh.dir) }),

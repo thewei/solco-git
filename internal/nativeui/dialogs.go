@@ -158,6 +158,7 @@ func (s *Shell) dialogs(c *ui.Context) {
 	}
 	s.gitNoticeDialog(c)
 	s.gitMoreDialogs(c)
+	s.dirtySheet(c)
 	if s.confirmOpen {
 		// Destructive confirms must not default-focus the destructive
 		// button: AlertDialog focuses and Enter-clicks its LAST button, so
