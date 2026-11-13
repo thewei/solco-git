@@ -19,8 +19,10 @@ import (
 // quickLaunch is the palette's state: open, the query, the highlighted row.
 type quickLaunch struct {
 	open  bool
+	tab   int // quickTabFiles / quickTabText / quickTabRepos
 	query string
 	sel   int
+	qo    *quickOpenState // the Files / Text tabs' rows and preview (quick_open.go)
 }
 
 // quickItem is one row of Quick Launch.
@@ -118,10 +120,7 @@ func (w *Window) quickRows() (open, recent []quickItem) {
 }
 
 // openQuickLaunch shows the palette with an empty query.
-func (w *Window) openQuickLaunch() {
-	w.quick = quickLaunch{open: true}
-	w.loadRecentBranches()
-}
+func (w *Window) openQuickLaunch() { w.openQuickTab(quickTabRepos) }
 
 // launch acts on a row: switch to a workspace, otherwise open the repository
 // (which makes it one).
@@ -141,64 +140,85 @@ func (w *Window) quickLaunchView(c *ui.Context) {
 	if !q.open {
 		return
 	}
+	t := c.Theme()
+	k := gorexColorsOf(t.Dark)
+	width := float32(560)
+	if q.tab != quickTabRepos {
+		width = 900
+	}
+	ui.Modal(c, &q.open, func() {
+		ui.Column(c).Width(width).MaxWidth(width + 60).Gap(Spacing().S).Children(func() {
+			tab := q.tab
+			segmentedControl(c, &q.tab, "Files", "Text", "Repos").Label("Quick open")
+			if q.tab != tab { // the query stays: the same words, another place to look
+				q.sel = 0
+				return
+			}
+			if q.tab != quickTabRepos {
+				w.quickOpenBody(c, q, k)
+				return
+			}
+			w.quickReposBody(c, q, k)
+		})
+	})
+}
+
+// quickReposBody is the Repos tab, the former Quick Launch: the workspaces
+// and the recent repositories under a query field.
+func (w *Window) quickReposBody(c *ui.Context, q *quickLaunch, k *gorexColors) {
+	t := c.Theme()
 	open, recent := w.quickRows()
 	items := quickItems(open, recent, q.query)
 	q.sel = clamp(q.sel, 0, max(len(items)-1, 0))
-	t := c.Theme()
-	k := gorexColorsOf(t.Dark)
-	ui.Modal(c, &q.open, func() {
-		ui.Column(c).Width(560).MaxWidth(620).Gap(Spacing().S).Children(func() {
-			field := searchField(c, &q.query).FillWidth().AutoFocus().Label("Quick Launch").
-				Placeholder("Open a repository, or type a folder path")
-			if field.Changed() {
-				q.sel = 0
-			}
-			if field.Shortcut(0, ui.KeyDown) {
-				q.sel = min(q.sel+1, max(len(items)-1, 0))
-			}
-			if field.Shortcut(0, ui.KeyUp) {
-				q.sel = max(q.sel-1, 0)
-			}
-			if field.Submitted() && len(items) > 0 {
-				w.launch(items[q.sel])
-				return
-			}
-			ui.Scroll(c).FillWidth().MaxHeight(switcherListMaxHeight + 60).Children(func() {
-				ui.Column(c).FillWidth().Gap(1).Children(func() {
-					section := ""
-					for i, item := range items {
-						head := "Recent"
-						switch {
-						case item.Typed:
-							head = "Path"
-						case item.Open:
-							head = "Workspaces"
-						}
-						if head != section {
-							section = head
-							ui.Text(c, head).FontSize(Typography().BodySmall).FontWeight(WeightMedium).
-								TextColor(t.TextMuted).Padding(6, 10, 2)
-						}
-						if w.quickRow(c, k, item, q.query, i == q.sel, "quick").Clicked() {
-							w.launch(item)
-						}
-					}
-					if len(items) == 0 {
-						ui.Text(c, "No matching repositories").FontSize(Typography().Caption).
-							TextColor(t.TextMuted).Padding(Spacing().S)
-					}
-				})
-			})
-			ui.Row(c).FillWidth().Padding(4, 10, 0).Gap(12).Children(func() {
-				ui.Text(c, "↵ switch or open").FontSize(Typography().Caption).TextColor(t.TextMuted)
-				ui.Text(c, "esc close").FontSize(Typography().Caption).TextColor(t.TextMuted)
-				ui.Spacer(c)
-				if compactButton(c, "Open Repository…").Clicked() {
-					q.open = false
-					w.chooseRepository()
+	field := searchField(c, &q.query).FillWidth().AutoFocus().Label("Quick Launch").
+		Placeholder("Open a repository, or type a folder path")
+	if field.Changed() {
+		q.sel = 0
+	}
+	if field.Shortcut(0, ui.KeyDown) {
+		q.sel = min(q.sel+1, max(len(items)-1, 0))
+	}
+	if field.Shortcut(0, ui.KeyUp) {
+		q.sel = max(q.sel-1, 0)
+	}
+	if field.Submitted() && len(items) > 0 {
+		w.launch(items[q.sel])
+		return
+	}
+	ui.Scroll(c).FillWidth().MaxHeight(switcherListMaxHeight + 60).Children(func() {
+		ui.Column(c).FillWidth().Gap(1).Children(func() {
+			section := ""
+			for i, item := range items {
+				head := "Recent"
+				switch {
+				case item.Typed:
+					head = "Path"
+				case item.Open:
+					head = "Workspaces"
 				}
-			})
+				if head != section {
+					section = head
+					ui.Text(c, head).FontSize(Typography().BodySmall).FontWeight(WeightMedium).
+						TextColor(t.TextMuted).Padding(6, 10, 2)
+				}
+				if w.quickRow(c, k, item, q.query, i == q.sel, "quick").Clicked() {
+					w.launch(item)
+				}
+			}
+			if len(items) == 0 {
+				ui.Text(c, "No matching repositories").FontSize(Typography().Caption).
+					TextColor(t.TextMuted).Padding(Spacing().S)
+			}
 		})
+	})
+	ui.Row(c).FillWidth().Padding(4, 10, 0).Gap(12).Children(func() {
+		ui.Text(c, "↵ switch or open").FontSize(Typography().Caption).TextColor(t.TextMuted)
+		ui.Text(c, "esc close").FontSize(Typography().Caption).TextColor(t.TextMuted)
+		ui.Spacer(c)
+		if compactButton(c, "Open Repository…").Clicked() {
+			q.open = false
+			w.chooseRepository()
+		}
 	})
 }
 

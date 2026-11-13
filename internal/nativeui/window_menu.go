@@ -98,6 +98,8 @@ func (w *Window) MenuBar() *mygo.Menu {
 		do("Open Repository…", accelOpen, w.chooseRepository),
 		{Label: "Open Recent", Submenu: recent},
 		do("Quick Launch…", accelQuickLaunch, w.openQuickLaunch),
+		repo("Go to File…", accelGoToFile, func(*Shell) { w.openQuickTab(quickTabFiles) }),
+		repo("Find in Files…", accelFindInFiles, func(*Shell) { w.openQuickTab(quickTabText) }),
 		mygo.Separator(),
 		repo("Save", accelSave, func(sh *Shell) { sh.saveEdit() }),
 		mygo.Separator(),

@@ -48,7 +48,16 @@ func (s *Shell) gitBusy() bool {
 
 // revealFile opens a file in the Files view, expanding its folders in the
 // tree. A path outside the repository is ignored.
-func (s *Shell) revealFile(file string) {
+func (s *Shell) revealFile(file string) { s.showFile(file, s.openFilePreview) }
+
+// revealFileAt is revealFile landing on a line (0-based) and column.
+func (s *Shell) revealFileAt(file string, line, col, length int) {
+	s.showFile(file, func(abs string) { s.openFileAt(abs, line, col, length) })
+}
+
+// showFile switches to Files, opens the folders above file and hands the
+// absolute path to open.
+func (s *Shell) showFile(file string, open func(abs string)) {
 	abs := file
 	if !filepath.IsAbs(abs) {
 		abs = filepath.Join(s.dir, file)
@@ -62,7 +71,7 @@ func (s *Shell) revealFile(file string) {
 	for dir := filepath.Dir(abs); dir != s.dir && strings.HasPrefix(dir, s.dir); dir = filepath.Dir(dir) {
 		s.rightPanel.expandedDirs[dir] = true
 	}
-	s.openFilePreview(abs)
+	open(abs)
 }
 
 // selectChangedFile picks a file on Changes the way a click on its row does:

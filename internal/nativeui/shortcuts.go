@@ -34,6 +34,8 @@ const (
 	accelOpen          = "CmdOrCtrl+O"
 	accelSave          = "CmdOrCtrl+S"
 	accelQuickLaunch   = "CmdOrCtrl+Shift+O"
+	accelGoToFile      = "CmdOrCtrl+P"
+	accelFindInFiles   = "CmdOrCtrl+Shift+F"
 	accelCloseWindow   = "CmdOrCtrl+W"
 	accelBack          = "CmdOrCtrl+["
 	accelForward       = "CmdOrCtrl+]"

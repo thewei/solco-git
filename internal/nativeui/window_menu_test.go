@@ -101,6 +101,8 @@ func TestMenusSpeakWorkspacesNotTabs(t *testing.T) {
 		"Close Window":            accelCloseWindow,
 		"Open Repository…":        accelOpen,
 		"Quick Launch…":           accelQuickLaunch,
+		"Go to File…":             accelGoToFile,
+		"Find in Files…":          accelFindInFiles,
 		"Show Next Workspace":     accelNextWorkspace,
 		"Show Previous Workspace": accelPrevWorkspace,
 	} {

@@ -13,7 +13,8 @@ Solco Git 的全部呈现层；每个文件开头的 L3 头（`[INPUT]/[OUTPUT]/
 - `window_menu.go`：菜单栏（File / Repository / View / Window）的单一来源，只调已有方法；⌃⇥ / ⌃⇧⇥ 是 Window 菜单的可见项（AppKit 不把 Control-Tab 交给视图，Hidden 项的键位也不触发）。
 - `window_dialogs.go`：不属于任何仓库的浮层（设置、移除工作区确认）。
 - `welcome.go`：零工作区页：复用资源包嵌入的应用图标，显示 Open Repository…（⌘O）、最近列表与拖入提示。
-- `quick_launch.go`：⇧⌘O，已开工作区与最近仓库的筛选列表（工作区下拉复用它的行与匹配）。
+- `quick_launch.go`：快开浮层的壳（Files / Text / Repos 三标签，切标签保留输入）与 Repos 标签：⇧⌘O，已开工作区与最近仓库的筛选列表（工作区下拉复用它的行与匹配）。
+- `quick_open.go`：快开的 Files（⌘P，子序列排名、空输入列最近打开的）与 Text（⇧⌘F，内容搜索、停顿后才起进程）两标签：↑↓ / ↵ 打开（Text 落在命中行）、右侧只读预览（读前 256 KiB）；文件索引与侧栏搜索共用，不需要 fzf（2026-11-13 决定第 (3) 条）。
 - `external_open.go`：`solcogit://open?repo=&view=&file=` 与 `open -a` 的唯一入口（解析、校验、不记日志）。
 - `shortcuts.go`：键位单一来源——菜单里列出的键就是绑定的键（⌘B 是唯一的窗口内快捷键，其余都是菜单加速键）。
 - `shell.go` / `shell_tab.go`：一个工作区 = 一个 Shell（Git + Files 所需的那部分状态）及其作为窗口成员的生命周期接缝；`view.go` 是工作区内的三个视图（Changes / Commits / Files），没有页面栈。
@@ -69,6 +70,7 @@ UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差�
 - `window_landing_test.go`：冷启动经链接落点——首读之后列表顶上是被点名文件的卡，内容分批读到后也不动，过了揭示窗口选中行仍是它。
 - `window_polish_test.go`：首读之前侧栏说 Reading references… 而不是五个 0；外部改动直接读到、没有「Files changed on disk」提示；窄卡不画 Viewed 框；提交计数按单复数（1 commit）；欢迎页的两句话各占一行。
 - `window_render_test.go`、`files_evidence_test.go`：与设计稿逐屏对照的 PNG 证据（设置 `SOLCOGIT_EVIDENCE` 才落盘）。
+- `quick_open_test.go`：Files 排名与 ↵ 打开、名字命中先于文件夹命中、空输入列最近打开的与无命中说明、Text 落在命中行与不足两字不搜、切标签保留输入、无工作区时落在 Repos；预览 / 排名 / ↵ 打开做过变异检查。
 - `files_edit_test.go`：默认只读与铅笔、原子写盘（CRLF / 权限 / 无残留）、符号链接与仓库边界、写失败不动原文件、Git 写操作与切文件前先问（Cancel / Save / Discard 三条路）、磁盘被改写的三种处理与 Save 自查、不可编辑的文件、退出与移除工作区的确认、重命名 / 删除拒绝；每条规则做过变异检查。
 - `files_git_test.go`、`commit_tree_test.go`、`multi_push_test.go`、`image_compare_test.go`：2026-11-07「Solco Git」决定里 Files 一节、按提交看整棵树、多引用推送、图片对比的回归防线。
 
