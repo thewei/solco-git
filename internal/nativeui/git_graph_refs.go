@@ -212,6 +212,7 @@ func (s *Shell) reveal(hash, review string, widened bool) {
 	}
 	s.commitsMode = true
 	s.gitCommitFilter = ""
+	s.clearCommitFilter()
 	if !slices.ContainsFunc(s.git.commits, func(cm gitworkbench.CommitInfo) bool { return cm.Hash == hash }) {
 		if widened {
 			s.pendingToast = "That commit is not in the graph."

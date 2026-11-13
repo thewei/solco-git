@@ -339,6 +339,7 @@ func (s *Shell) resetGitContextState() {
 	s.gitTreeClosed = make(map[string]bool)
 	s.gitRefsFilter, s.gitRefsSearchOpen, s.gitRefsSelected = "", false, ""
 	s.gitCommitFilter = ""
+	s.clearCommitFilter()
 	s.gitCommitFilesFilter = ""
 	s.changesSearchOpen, s.gitCommitSearchOpen, s.gitCommitFilesSearchOpen = false, false, false
 	s.gitQuickSubject, s.gitQuickBody, s.gitQuickAmend = "", "", false

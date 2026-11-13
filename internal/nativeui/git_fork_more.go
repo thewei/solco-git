@@ -28,6 +28,8 @@ type gitMoreState struct {
 	history   historySheetState
 	patchDest patchDestState
 	courier   courierState
+	stashPick stashLinesState
+	cfilter   commitFilterState
 	conflict  conflictSheetState
 	submodule submoduleDialogState
 	stash     stashDialogState

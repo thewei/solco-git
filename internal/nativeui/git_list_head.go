@@ -23,14 +23,15 @@ func (s *Shell) gitListHead(c *ui.Context, search *headerSearch, padX float32, s
 }
 
 // filteredCommits is the history the Commits search leaves: subject, author
-// or a hash prefix match.
+// or a hash prefix match, within what the Git-side Filters left.
 func (s *Shell) filteredCommits() []gitworkbench.CommitInfo {
+	base := s.baseCommits()
 	q := strings.ToLower(strings.TrimSpace(s.gitCommitFilter))
 	if q == "" {
-		return s.git.commits
+		return base
 	}
 	var entries []gitworkbench.CommitInfo
-	for _, cm := range s.git.commits {
+	for _, cm := range base {
 		if strings.Contains(strings.ToLower(cm.Subject), q) ||
 			strings.Contains(strings.ToLower(cm.Author), q) ||
 			strings.HasPrefix(cm.Hash, q) {

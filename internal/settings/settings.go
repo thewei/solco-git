@@ -57,6 +57,9 @@ type WorkbenchSettings struct {
 	TreeFolds map[string]map[string]bool `json:"tree_folds,omitempty"`
 	// HideStashes drops the stash chips from the Commits list.
 	HideStashes bool `json:"hide_stashes,omitempty"`
+	// HideMovedLines turns the diff's moved-line highlight off (it is on by
+	// default, so the switch is stored the other way round).
+	HideMovedLines bool `json:"hide_moved_lines,omitempty"`
 }
 
 // WindowSettings is the window's restorable state: the workspaces the user

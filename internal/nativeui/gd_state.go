@@ -59,6 +59,10 @@ type gdFile struct {
 	// metric is computed once per change of the shown hunks or contents.
 	metric      gdFileMetrics
 	metricsDone bool
+	// moved memoizes which changed lines moved (gitworkbench.MovedLines),
+	// computed when one is first drawn.
+	moved     map[[2]int]gitworkbench.MovedLine
+	movedDone bool
 	// spans keeps the styled code of the lines shown, which does not change
 	// from frame to frame.
 	spans map[gdSpanKey][]ui.Span
@@ -302,7 +306,18 @@ func (f *gdFile) setView(view gdViewSide) {
 // resetDerived drops everything computed from the shown hunks.
 func (f *gdFile) resetDerived() {
 	f.words, f.pairs, f.spans = nil, nil, nil
+	f.moved, f.movedDone = nil, false
 	f.metricsDone = false
+}
+
+// movedAt says whether the line at {hunk, index} of the shown hunks moved
+// rather than changed, and where its other end is.
+func (f *gdFile) movedAt(hunk, index int32) (gitworkbench.MovedLine, bool) {
+	if !f.movedDone {
+		f.moved, f.movedDone = gitworkbench.MovedLines(f.hunks()), true
+	}
+	m, ok := f.moved[[2]int{int(hunk), int(index)}]
+	return m, ok
 }
 
 // finishLarge records the outcome of a deferred file's on-demand read.

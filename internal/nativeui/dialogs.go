@@ -183,6 +183,8 @@ func (s *Shell) submitTextDialog(kind, target, value string) {
 			return
 		}
 		s.createBranch(value)
+	case "git-stash-lines":
+		s.submitStashLines(target, value)
 	case "git-rename-branch", "git-create-branch-at", "git-rename-stash":
 		s.submitRefDialog(kind, target, value)
 	case "files-new-file", "files-new-dir", "files-rename":

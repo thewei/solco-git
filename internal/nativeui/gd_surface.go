@@ -718,6 +718,13 @@ func (s *Shell) gdLineCell(c *ui.Context, pal *gdPalette, f *gdFile, r *gdRow, l
 	case gitworkbench.KindDelete:
 		bg, gutterBg, bar, numColor, wordColor = pal.delBg, pal.delGutter, pal.delBar, pal.delBar, pal.delWord
 	}
+	moved, isMoved := gitworkbench.MovedLine{}, false
+	if ls.kind != gitworkbench.KindContext && !s.settings.Workbench.HideMovedLines {
+		moved, isMoved = f.movedAt(ls.hunk, ls.index)
+	}
+	if isMoved {
+		bg, gutterBg, bar, numColor, wordColor = pal.movedBg, pal.movedNum, pal.movedBar, pal.movedBar, pal.movedWord
+	}
 	cell := ui.Row(c).Grow(1).MinWidth(0).AlignItems(ui.Stretch).Background(bg)
 	_, stageable := s.gdStageSide(f)
 	stageable = (stageable || s.gdPatchPickable(f)) && ls.hunk >= 0 && ls.index >= 0 && ls.kind != gitworkbench.KindContext
@@ -766,6 +773,9 @@ func (s *Shell) gdLineCell(c *ui.Context, pal *gdPalette, f *gdFile, r *gdRow, l
 			gutterRow.Cursor(ui.CursorPointer)
 			s.gdGutterPick(f, gutterRow, int(ls.hunk), int(ls.index))
 		}
+		if isMoved {
+			tipped(c, gutterRow, gdMovedTip(moved))
+		}
 		gutterRow.Children(func() {
 			ui.Box(c).Width(4).AlignSelf(ui.Stretch).Background(bar)
 			if unified {
@@ -792,6 +802,14 @@ func (s *Shell) gdLineCell(c *ui.Context, pal *gdPalette, f *gdFile, r *gdRow, l
 			}
 		})
 	})
+}
+
+// gdMovedTip names where a moved line's other end is.
+func gdMovedTip(m gitworkbench.MovedLine) string {
+	if m.Removed {
+		return "Moved to line " + itoa(m.Other)
+	}
+	return "Moved from line " + itoa(m.Other)
 }
 
 // gdLineSpans styles the code of a line: kept from frame to frame, apart from

@@ -32,6 +32,7 @@ Git（复制自 Solco，随 `solco-gitkit` 演进）
 - `git_history_ui.go`：历史改写界面（2026-11-12 决定第 (12) 条）：提交列表 ⌘ / ⇧ 多选（`pickCommit`）、右键菜单的 Squash / Fixup / Drop / Move Up·Down / Reword、Amend Staged Changes Into This Commit…、Cherry-pick N Commits…；一切先弹「预览」表（`PreviewHistory` 的结果，已推送的有警告、提示 ⌥⌘Z 可退回）再执行，冲突由内核中止并还原。
 - `git_patch_ui.go`：Custom Patch 界面（同一条决定）：提交审阅里整文件（文件菜单 Add File to Custom Patch）与按行（点行号，⇧ 连选、⌘ 追加、拖过；hunk 行 Add Hunk to Patch）两种选择，选择记在界面坐标里、执行时才用 `PatchSource` + `PatchLinesFor` 换成 Git 的行号（对不上即拒绝）；审阅顶部的 Custom Patch 条（Remove / Split / Move / Undo / Clear，Move 先选目标提交）；合并提交、stash、不在当前分支的提交不可用；换提交即清空选择。
 - `git_courier_ui.go`：Change Courier 界面（2026-11-12 决定第 (13) 条）：Send to Worktree 面板——来源是 Changes 的文件菜单（整文件）、已选行 hunk 行上的 Send…、提交审阅 Custom Patch 条上的 Send…；目标是同一仓库的其它 worktree（单选列表，换目标即对新目标重新预检，旧答案作废）；预检不干净时给 Git 的原话且 Send 不可点；Move 复选框：成功后从源丢弃（工作区整文件 / 暂存之外的行 / 提交里 Remove），有暂存的文件或行不提供并说明；补丁面板打开时一次做好，预检与送达用同一份文本。
+- `gd_moved_test.go` / `gd_diffstat.go` / `git_stash_lines_ui.go` / `git_commit_filter_ui.go`：2026-11-12 决定第 (14) 条的四项界面——移动行高亮（`gdLineCell` 用移动色而非增删色、悬停提示 “Moved to / from line N”，结果按 `gdFile` 记住、随 `resetDerived` 清空；View 菜单 “Highlight Moved Lines” 开关，默认开，设置里存反向的 `hide_moved_lines`）、文件行上 +N −N 旁的五格比例条（`gdStatBlocks`：有新增必有绿、有删除必有红、同数同格）、行级 stash（hunk 行上的 “Stash N Lines…”，N 是该文件里选中的全部行；问一句预填的说明；已暂存 / 未跟踪 / 暂存侧不可用并说明原因；对话框开着时仓库换了就拒）、提交过滤（列表头的 Filters 弹层：Path / Since / Until / Current branch only，点 Apply 才由 Git 查，结果在 `cfilter.commits`；文字搜索在其内再筛；筛选中的列表只画圆点；仓库刷新时重查，换仓库与 reveal 时清除）。
 - `commit_tree.go`：Fork 的 File Tree——提交评审里 Diff | Tree 切换，按提交看整棵树（读 `ListTree`/`ReadBlob`，只读）。
 - `multi_push.go`：Push Multiple…——一次推多个分支与标签（`ReadPushOffer`/`PushMany`），分叉的标为受阻，永不强推。
 - `image_compare.go`：图片改动的 2-up / Swipe / Onion 对比，画在已解码位图上。
@@ -61,6 +62,7 @@ UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差�
 - `git_history_ui_test.go`：先预览再改写（Drop / Squash / Fixup / Move / Reword / Amend / Cherry-pick N）、取消不动仓库、预览拒绝成 toast、已推送警告、冲突的改写被中止且仓库原样、改写可由 Undo 退回、⌘ / ⇧ 多选规则；SOLCOGIT_EVIDENCE 落 PNG。
 - `git_patch_ui_test.go`：选择规则（点选 / ⌘ / ⇧ / 整文件被行选收窄 / 换提交清空）、合并 / 他分支提交不可用、Remove / Split / Move / Undo 的结果与选择一致、改名文件的按行移除、冲突与对不上时仓库原样；每条规则做过变异检查。
 - `git_courier_ui_test.go`：文件送达后在目标里是未暂存改动、源不变；Move 整文件（含未跟踪）与行；有暂存的文件 / 行可送不可移；对不上时不能送；换目标重新预检；没有其它 worktree 时给原因不开面板；提交里 Custom Patch 的选择送出并 Move（从提交里移除）；每条规则做过变异检查。
+- `gd_moved_test.go` / `gd_diffstat_test.go` / `git_stash_lines_ui_test.go` / `git_commit_filter_ui_test.go`：移动行用移动色、悬停提示方向、开关关掉后一个移动色像素都不剩；比例条的格数规则与文件行上真有一条；跨 hunk 选行后点 “Stash N Lines…”，stash 只含选中行、工作区只少这些行，已暂存 / 未跟踪 / 暂存侧不提供并说明原因，过期对话框被拒；Filters 弹层里填路径点 Apply 只剩 Git 答复的提交且画出来的行也只剩它们，文字搜索在其内，当前分支 / 被隐藏分支 / 错误日期保留旧列表 / 历史前进后重查 / reveal 清除。
 - `window_menu_test.go`：应用菜单合同——About 之后才是 Check for Updates…（main 接上更新器才有，每次重装菜单拿新菜单项），Settings… 与 Quit 不丢。
 - `window_workspaces_test.go`：工作区下拉与管理的合同——chip 始终是当前工作区；搜索（过滤、↑↓、↵ 切换并刷新、无命中时 ↵ 什么也不做）、最大高度与滚动、行右键移除、设置里的排序/移除/Add Workspace…（添加不抢前台）、每一种打开方式都加入清单、旧版 `tabs` 键读成工作区、清单上限、共享图标按钮是 Tab 停靠点。
 - `window_landing_test.go`：冷启动经链接落点——首读之后列表顶上是被点名文件的卡，内容分批读到后也不动，过了揭示窗口选中行仍是它。

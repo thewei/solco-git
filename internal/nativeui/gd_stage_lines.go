@@ -278,6 +278,17 @@ func (s *Shell) gdHunkRow(c *ui.Context, pal *gdPalette, f *gdFile, r *gdRow) {
 				if tipped(c, compactButton(c, "Send…").Disabled(busy), "Send these lines to another worktree").Clicked() {
 					s.openCourierLines(f, int(r.hunk), picked)
 				}
+				if !unstage {
+					why := s.stashLinesWhy(f)
+					n := s.pickedInFile(f)
+					tip := "Stash the " + gdCountOf(n, "picked line") + " of this file"
+					if why != "" {
+						tip = why
+					}
+					if tipped(c, compactButton(c, "Stash "+gdCountOf(n, "Line")+"…").Disabled(busy || why != ""), tip).Clicked() {
+						s.openStashLines(f)
+					}
+				}
 				label := verb + " " + gdCountOf(len(picked), "Line")
 				if tipped(c, compactPrimaryButton(c, label).Disabled(busy), label+" in this hunk").Clicked() {
 					s.gdMoveLines(f, int(r.hunk), picked, unstage)

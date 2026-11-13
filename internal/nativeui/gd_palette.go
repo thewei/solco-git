@@ -23,6 +23,10 @@ type gdPalette struct {
 	delWord    ui.Color
 	delBar     ui.Color
 	delText    ui.Color
+	movedBg    ui.Color // a line that moved rather than changed
+	movedNum   ui.Color
+	movedWord  ui.Color
+	movedBar   ui.Color
 	emptySide  ui.Color // the side of a split row without a line
 	gapBg      ui.Color // "N unmodified lines"
 	gapText    ui.Color
@@ -54,6 +58,10 @@ var (
 		delWord:    ui.RGBA(255, 46, 63, 0.17),
 		delBar:     ui.Hex("#ff2e3f"),
 		delText:    ui.RGB(184, 49, 47),
+		movedBg:    ui.Hex("#efe6fb"),
+		movedNum:   ui.Hex("#e4d6f8"),
+		movedWord:  ui.RGBA(138, 79, 224, 0.18),
+		movedBar:   ui.Hex("#8a4fe0"),
 		emptySide:  ui.Hex("#fafafa"),
 		gapBg:      ui.Hex("#f4f4f4"),
 		gapText:    ui.Hex("#8a8a8a"),
@@ -83,6 +91,10 @@ var (
 		delWord:    ui.RGBA(255, 103, 98, 0.24),
 		delBar:     ui.Hex("#ff6762"),
 		delText:    ui.RGB(238, 126, 126),
+		movedBg:    ui.Hex("#2f2742"),
+		movedNum:   ui.Hex("#3a3052"),
+		movedWord:  ui.RGBA(167, 123, 255, 0.22),
+		movedBar:   ui.Hex("#a77bff"),
 		emptySide:  ui.Hex("#202020"),
 		gapBg:      ui.Hex("#262626"),
 		gapText:    ui.Hex("#8a8a8a"),

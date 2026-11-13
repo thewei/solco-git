@@ -120,7 +120,7 @@ func (s *Shell) commitsPane(c *ui.Context, pal *gdPalette) {
 	view := s.commitView()
 	fold, foldedCounts := view.fold, view.counts
 	entries := view.shown
-	filtering := strings.TrimSpace(s.gitCommitFilter) != ""
+	filtering := strings.TrimSpace(s.gitCommitFilter) != "" || s.commitFilterOn()
 	if filtering {
 		entries = s.filteredCommits()
 	}

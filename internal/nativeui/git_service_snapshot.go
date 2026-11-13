@@ -199,6 +199,7 @@ func (s *Shell) loadBranches() {
 			} else {
 				commits = s.git.commits
 			}
+			s.reloadCommitFilter()
 			// A history view opened before refs finished loading gets its
 			// first read-only commit after the root/generation fence.
 			if s.commitsMode && !s.gdReviewingCommit() && len(commits) > 0 {

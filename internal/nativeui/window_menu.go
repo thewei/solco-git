@@ -2,7 +2,7 @@ package nativeui
 
 /**
  * [INPUT]: 依赖 window.go 的工作区/打开/设置、shortcuts.go 的加速键常量、当前工作区的 Git 动作（fetch/pull/push/stash/…）、MyGo 菜单 API
- * [OUTPUT]: 对外提供 MenuBar（macOS 菜单栏：Solco Git / File / Repository / View（Changes/Commits/Files、Back ⌘[ / Forward ⌘]、Toggle Sidebar、Refresh、Show Next/Previous Workspace ⇧⌘] ⇧⌘[）/ Edit / Window（Minimize、Zoom、Show Next/Previous Workspace ⌃⇥ ⌃⇧⇥）/ Help，结构与键位同设计稿；Solco Git 菜单里 About 之后是 main 经 SetUpdateItem 注入的 Check for Updates…）、refreshMenu（最近列表、是否有仓库、历史能否 Back/Forward、"隐藏 stash"变化时重装菜单）
+ * [OUTPUT]: 对外提供 MenuBar（macOS 菜单栏：Solco Git / File / Repository / View（Changes/Commits/Files、Back ⌘[ / Forward ⌘]、Toggle Sidebar、Refresh、Show Next/Previous Workspace ⇧⌘] ⇧⌘[、Highlight Moved Lines 开关、Hide Stashes 开关）/ Edit / Window（Minimize、Zoom、Show Next/Previous Workspace ⌃⇥ ⌃⇧⇥）/ Help，结构与键位同设计稿；Solco Git 菜单里 About 之后是 main 经 SetUpdateItem 注入的 Check for Updates…）、refreshMenu（最近列表、是否有仓库、历史能否 Back/Forward、"隐藏 stash"变化时重装菜单）
  * [POS]: 菜单栏的单一来源：菜单项只调窗口或当前工作区已有的方法，不自带逻辑；⌘B 不在这里（窗口内快捷键，见 window_view.go shortcuts）；⌃Tab / ⌃⇧Tab 只能是可见的菜单项（AppKit 不把它们交给视图，Hidden 项的键位也不触发，见 shortcuts.go）
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -152,6 +152,13 @@ func (w *Window) MenuBar() *mygo.Menu {
 		do("Show Next Workspace", accelNextWorkspace, func() { w.stepWorkspace(1) }),
 		do("Show Previous Workspace", accelPrevWorkspace, func() { w.stepWorkspace(-1) }),
 		mygo.Separator(),
+		{Label: "Highlight Moved Lines", Type: mygo.MenuItemCheckbox, Checked: !w.settings.Workbench.HideMovedLines,
+			Click: func(*mygo.MenuItem, *mygo.Window) {
+				w.onUI(func() {
+					hide := !w.settings.Workbench.HideMovedLines
+					w.change(func(v *settings.Settings) { v.Workbench.HideMovedLines = hide })
+				})
+			}},
 		{Label: "Hide Stashes in Commit List", Type: mygo.MenuItemCheckbox, Checked: w.settings.Workbench.HideStashes,
 			Disabled: !has, Click: func(*mygo.MenuItem, *mygo.Window) {
 				w.onUI(func() {

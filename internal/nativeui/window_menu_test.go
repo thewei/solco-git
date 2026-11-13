@@ -2,7 +2,7 @@ package nativeui
 
 /**
  * [INPUT]: window_menu.go MenuBar、headless 窗口
- * [OUTPUT]: 应用菜单合同：About 之后才是 Check for Updates…（只在 main 接上更新器时才有，每次重装菜单都拿一个新的菜单项），Settings… 与 Quit 不丢；File 菜单没有标签的残留（New Tab / Close Tab），⌘W 是 Close Window，View 菜单换工作区的两项带 ⇧⌘] / ⇧⌘[，View 的 Back ⌘[ / Forward ⌘]，Window 菜单的 ⌃⇥ / ⌃⇧⇥ 是可见项且真的换工作区（Hidden 项的键位不触发，整条菜单栏不允许有带键位的 Hidden 项）
+ * [OUTPUT]: 应用菜单合同：About 之后才是 Check for Updates…（只在 main 接上更新器时才有，每次重装菜单都拿一个新的菜单项），Settings… 与 Quit 不丢；File 菜单没有标签的残留（New Tab / Close Tab），⌘W 是 Close Window，View 菜单换工作区的两项带 ⇧⌘] / ⇧⌘[，View 的 Back ⌘[ / Forward ⌘]，Window 菜单的 ⌃⇥ / ⌃⇧⇥ 是可见项且真的换工作区（Hidden 项的键位不触发，整条菜单栏不允许有带键位的 Hidden 项），View ▸ Highlight Moved Lines 默认勾选、选一次关、再选一次开
  * [POS]: 2026-11-07「Solco Git」决定里更新通道（G6）与 2026-11-08 工作区下拉在应用一侧的回归防线；没有更新器的 headless 窗口菜单里一个更新项都没有
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -182,5 +182,39 @@ func TestMenusCarryHistoryAndControlTab(t *testing.T) {
 	}
 	for _, menu := range w.MenuBar().Items() {
 		walk(menu.Submenu, menu.Label+" ▸ ")
+	}
+}
+
+// View ▸ Highlight Moved Lines is a checked switch that starts on, turns the
+// highlight off when chosen and on again the second time (the settings store
+// the reverse, so a fresh settings file means on).
+func TestViewMenuHighlightMovedLinesSwitch(t *testing.T) {
+	w, pump := newTestWindow(t)
+	item := func() *mygo.MenuItem {
+		for _, menu := range w.MenuBar().Items() {
+			if menu.Label != "View" {
+				continue
+			}
+			for _, it := range menu.Submenu {
+				if it.Label == "Highlight Moved Lines" {
+					return it
+				}
+			}
+		}
+		t.Fatal("the View menu has no Highlight Moved Lines item")
+		return nil
+	}
+	if it := item(); it.Type != mygo.MenuItemCheckbox || !it.Checked || it.Disabled {
+		t.Fatalf("item = type %v checked %v disabled %v, want an enabled checked switch", it.Type, it.Checked, it.Disabled)
+	}
+	item().Click(item(), nil)
+	pump.drain()
+	if !w.settings.Workbench.HideMovedLines || item().Checked {
+		t.Errorf("after choosing it: hide=%v checked=%v, want the highlight off", w.settings.Workbench.HideMovedLines, item().Checked)
+	}
+	item().Click(item(), nil)
+	pump.drain()
+	if w.settings.Workbench.HideMovedLines || !item().Checked {
+		t.Errorf("after choosing it again: hide=%v checked=%v, want the highlight back on", w.settings.Workbench.HideMovedLines, item().Checked)
 	}
 }
