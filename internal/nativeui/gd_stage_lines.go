@@ -275,6 +275,9 @@ func (s *Shell) gdHunkRow(c *ui.Context, pal *gdPalette, f *gdFile, r *gdRow) {
 				if compactButton(c, "Clear").Clicked() {
 					s.git.gdPick = gdLinePick{}
 				}
+				if tipped(c, compactButton(c, "Send…").Disabled(busy), "Send these lines to another worktree").Clicked() {
+					s.openCourierLines(f, int(r.hunk), picked)
+				}
 				label := verb + " " + gdCountOf(len(picked), "Line")
 				if tipped(c, compactPrimaryButton(c, label).Disabled(busy), label+" in this hunk").Clicked() {
 					s.gdMoveLines(f, int(r.hunk), picked, unstage)

@@ -27,6 +27,7 @@ type gitMoreState struct {
 	commands  commandLogState
 	history   historySheetState
 	patchDest patchDestState
+	courier   courierState
 	conflict  conflictSheetState
 	submodule submoduleDialogState
 	stash     stashDialogState
@@ -750,6 +751,7 @@ func (s *Shell) gitMoreDialogs(c *ui.Context) {
 	s.commandLogSheet(c)
 	s.historySheet(c)
 	s.patchDestSheet(c)
+	s.courierSheet(c)
 	s.conflictSheet(c)
 	s.submoduleDialog(c)
 	s.stashDialog(c)
@@ -786,8 +788,11 @@ func (s *Shell) gdFileLogItems(m *ui.Menu, cf *gitworkbench.ChangeFile) {
 		if m.Item("Restore File from This Commit…").Disabled(s.git.opBusy || (deleted && !s.git.compare)).Chosen() {
 			s.confirmRestoreFile(s.git.commitHash, cf.Path)
 		}
-	} else if cf.Status != gitworkbench.StatusConflicted && m.Item("Stash File").Disabled(s.git.opBusy).Chosen() {
-		s.stashFile(cf.Path)
+	} else if cf.Status != gitworkbench.StatusConflicted {
+		if m.Item("Stash File").Disabled(s.git.opBusy).Chosen() {
+			s.stashFile(cf.Path)
+		}
+		s.courierItem(m, cf)
 	}
 }
 

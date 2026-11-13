@@ -295,6 +295,9 @@ func (s *Shell) patchBar(c *ui.Context) {
 		if tip(compactButton(c, "Undo…").Disabled(busy), "Undo to Working Tree: take them out of the commit and put them back, staged").Clicked() {
 			s.openPatchSheet(gitworkbench.PatchUndo, "")
 		}
+		if tip(compactButton(c, "Send…").Disabled(busy), "Send to Worktree: copy these changes into another worktree's files").Clicked() {
+			s.openCourierPatch()
+		}
 		if compactButton(c, "Clear").Clicked() {
 			s.clearPatchSelection()
 		}
