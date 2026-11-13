@@ -99,6 +99,9 @@ func (s *Shell) claimNativePreview(path string) {
 		st.webImage = false
 		s.dropFilesWebview() // the page and its engine process go with the image
 	}
+	if st.nativePreviewPath != path {
+		s.lspRelease()
+	}
 	st.nativePreviewPath = path
 	s.editResetFor(path)
 	st.nativeText = nil
@@ -200,6 +203,7 @@ func (s *Shell) beginNativeText(path string, flavor filesview.Flavor) {
 					s.filesPathItems(m, path, true)
 				},
 			}
+			s.lspBind(st.nativeCode, path)
 		}
 		s.applyFilesReveal()
 	}
@@ -373,6 +377,7 @@ func (s *Shell) nativePreviewBody(c *ui.Context) {
 		// The theme follows the window each frame: an appearance change
 		// repaints an open file without reloading it.
 		st.nativeCode.Theme = codeEditorTheme(c.Theme())
+		s.lspTick()
 		ui.Column(c).FillWidth().Grow(1).MinHeight(0).Children(func() {
 			s.editBanner(c)
 			editor.View(c, st.nativeCode).FillWidth().Grow(1).MinHeight(0)

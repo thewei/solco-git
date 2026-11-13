@@ -455,6 +455,9 @@ func (s *Shell) codeFoot(c *ui.Context, code *editor.State) {
 			ui.Text(c, "since HEAD").FontSize(typ.Caption).TextColor(muted)
 		}
 		ui.Spacer(c)
+		if code == s.rightPanel.nativeCode {
+			s.lspFoot(c)
+		}
 		language := "Plain text"
 		if lang := code.Buffer.Language(); lang != nil && lang.Name != "" {
 			language = lang.Name

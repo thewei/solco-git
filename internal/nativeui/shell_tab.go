@@ -117,6 +117,7 @@ func (s *Shell) Close() {
 	}
 	s.closeStaticPreview()
 	s.closeTerminal()
+	s.lspClose()
 }
 
 // refreshCurrent is ⌘R: re-read what the front view shows, and the remote's

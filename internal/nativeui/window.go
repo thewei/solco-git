@@ -50,6 +50,8 @@ type Window struct {
 	store  settings.Store
 	runner *gitworkbench.Runner
 	solco  *platform.SolcoLink // the one-way link to Solco (terminal owner: In Solco)
+	// servers lists the installed language servers for Settings; swapped in tests.
+	servers languageServers
 
 	setMu    sync.Mutex // serializes read-modify-write of the preferences
 	settings settings.Settings

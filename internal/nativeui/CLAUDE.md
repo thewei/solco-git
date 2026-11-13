@@ -42,6 +42,7 @@ Git（复制自 Solco，随 `solco-gitkit` 演进）
 Files
 - `page_files.go`、`right_panel*.go`、`files_*.go`：Files 视图——忽略感知的树、原生预览分级（2026-11-08「Files preview: native first」，与 Solco 同一份：`files_markdown.go` 的 `planPreviewTier` 把文本/代码交 `ui/editor`、≤ 2 MiB 的 Markdown 交 MyGo `ui/markdown`（Rendered | Source 一键切换，默认 Rendered；长文档由 `files_markdown_rows.go` 分行，`files_markdown_find.go` 管 ⌘F 查找，`files_markdown_html.go` 把原始 HTML 译成 Markdown 块，`files_markdown_rich.go` 画数学与 Mermaid）、≤ 1 MiB 的 SVG 画出来（Image | Source）、PNG/JPEG/GIF/WebP/BMP 原生解码；只有 AVIF/ICO 经 `files_webview.go` 里 Go 现拼的几百字节页面，底色 `filesWebviewFill` = 窗口画布）、起始页、搜索、文件操作；Quick Look / Copy Path / Reveal in Finder 由 `files_ops.go` 的 `filesPathItems` 给所有文件表面（树行、正文右键、Actions 菜单）。
 - `files_edit.go`（2026-11-13 决定第 (1)(2) 条，E1）：Files 里的就地编辑——文件默认只读，头部铅笔图标钮开关编辑（`fileEditState`，随预览文件重置）；⌘S / Save 原子写盘（同目录临时文件 + 重命名，保留权限与换行，符号链接写到仓库内的目标）；Revert / Reload from disk；有未保存编辑时切文件、做会写工作区的 Git 操作（`dirtySafeOps` 之外的都问）、退出、移除工作区前先问（Save and Continue / Discard Edits / Cancel）；重命名 / 删除含脏文件的路径直接拒绝；`syncEditedFile` 随每次快照比对磁盘：干净缓冲区静默重载，脏缓冲区只出 Reload from disk / Keep mine 条且 Save 拒绝。编辑器自己不跑 git；截断 / 非 UTF-8 / 非文本不可编辑；未实现：自动保存设置、Compare…、另存为、LSP、⌘P、终端（E2–E5）。
+- `files_lsp.go`（2026-11-13 决定第 (4) 条，E4）：Files 里的语言服务器只读能力——每个工作区一个 `lsp.Manager`（`lspState`，Shell.Close 时有序结束）；缓冲区是真相：每帧比一次 `Buffer.Version`，变了等 250 ms 静止把整份文本交给 Manager；发给服务器的版本 = 缓冲区版本 + 本文档的基数（新缓冲区——换文件、整个重建——基数抬高，LSP 版本永远递增）；诊断带版本回来 → `SetDiagnostics`（过期的由编辑器自己挪）；`OnHover` / `OnDefinition` 在 UI 道发起、请求在别处跑、结果回 UI 道并核对缓冲区版本；定义在仓库内走 `revealFileAt`、仓库外只 toast 一句；页脚一行（没装 / 启动中 / 反复崩溃后关闭 / 运行时的错误与警告计数，点它跳到下一个问题）；Settings 的语言服务器清单（`languageServers`，5 s 缓存，测试可固定）。
 - `files_git.go`：Files 比 Solco 多出的 Git 层——Changed | All、M/U 标记与文件夹点、槽边改动条（对照 HEAD）、Plain | Blame、History、底栏图例；全部读自 git 快照/blame/cat-file。
 
 UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差异）
@@ -75,6 +76,7 @@ UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差�
 - `terminal_drawer_test.go`：shell 在仓库根起、包装层的 pid 就是 shell 的 pid、Close / Restart 无进程直接结束有进程先问（Cancel 不动、确认才杀进程）、移除工作区有进程先问、shell 退出后显示退出码；取不到终端库时整组跳过；去掉询问 / Dir / pid 文件三个变异检查必红。
 - `quick_open_test.go`：Files 排名与 ↵ 打开、名字命中先于文件夹命中、空输入列最近打开的与无命中说明、Text 落在命中行与不足两字不搜、切标签保留输入、无工作区时落在 Repos；预览 / 排名 / ↵ 打开做过变异检查。
 - `files_edit_test.go`：默认只读与铅笔、原子写盘（CRLF / 权限 / 无残留）、符号链接与仓库边界、写失败不动原文件、Git 写操作与切文件前先问（Cancel / Save / Discard 三条路）、磁盘被改写的三种处理与 Save 自查、不可编辑的文件、退出与移除工作区的确认、重命名 / 删除拒绝；每条规则做过变异检查。
+- `files_lsp_test.go`：E4 的合同——打开 Go 文件后行内诊断与页脚计数（点计数跳到问题）、干净文件写「No problems」、没装服务器的文件页脚说一句且不弹错误、编辑静止后整份文本才发出且诊断随之更新、保存前先交文本再通知 didSave、换文件服务器收到 didClose、悬停显示服务器的话且文本已变的过期答案被丢弃、定义在仓库内落到 Files 的那一行那一列（UTF-16 → 字节）而仓库外只说一句、没装服务器时跳转定义有解释、Settings 列出找到 / 没找到的服务器。变异检查：页脚不计数、保存不先交文本、悬停不比版本，对应测试必红。
 - `files_git_test.go`、`commit_tree_test.go`、`multi_push_test.go`、`image_compare_test.go`：2026-11-07「Solco Git」决定里 Files 一节、按提交看整棵树、多引用推送、图片对比的回归防线。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 ../../CLAUDE.md

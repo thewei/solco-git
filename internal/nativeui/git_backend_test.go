@@ -5,13 +5,14 @@ import (
 	"os"
 	"testing"
 
+	"github.com/thewei/solco-git/internal/lsp/lsptest"
 	"github.com/thewei/solco-gitkit/engine"
 	"github.com/thewei/solco-gitkit/gitworkbench"
 )
 
 // Git runs this test binary as its editor while the engine rewrites history.
 func TestMain(m *testing.M) {
-	if engine.RunDaemon() {
+	if engine.RunDaemon() || lsptest.Serve() {
 		return
 	}
 	os.Exit(m.Run())

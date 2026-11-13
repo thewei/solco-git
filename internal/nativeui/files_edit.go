@@ -134,6 +134,7 @@ func (s *Shell) saveEdit() bool {
 		return false
 	}
 	st.nativeCode.Buffer.MarkSaved()
+	s.lspSaved()
 	if sig, ok := sigOf(e.path); ok {
 		e.sig = sig
 	}

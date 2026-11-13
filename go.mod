@@ -15,6 +15,7 @@ tool github.com/egoist/mygo/cmd/mygo
 require (
 	github.com/egoist/mygo v0.8.1
 	github.com/go-tex/math v0.50.0
+	github.com/sourcegraph/jsonrpc2 v0.2.3
 	github.com/thewei/solco-gitkit v0.2.0
 	golang.org/x/net v0.59.0
 	tuios.dev/sketch v0.4.0

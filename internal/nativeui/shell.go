@@ -97,6 +97,8 @@ type Shell struct {
 	term termDrawer
 	// edit is the editing state of the open file (files_edit.go).
 	edit fileEditState
+	// lsp is the language-server side of the open file (files_lsp.go).
+	lsp lspState
 	// filesSearch is the Files sidebar's one search (names | content).
 	filesSearch filesSearchState
 	// staticPreview serves the project root to HTML previews, started by the

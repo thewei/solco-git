@@ -9,6 +9,7 @@ internal/settings/ - the app's own preference file: appearance/density switches,
 internal/preview/ - loopback-only static server and WebView window behind a Files HTML page's "Open Preview"
 internal/codehl/ - token classes and palettes the diff review colors code with (MyGo's own tokenizers)
 internal/platform/ - bounded desktop helpers (open a file in the default editor; the one-way link to Solco: `solco://terminal?cwd=`)
+internal/lsp/ - language-server client for the Files editor (read capabilities: diagnostics, hover, go to definition): only servers already installed, one process per language per workspace, JSON-RPC on `sourcegraph/jsonrpc2`, reconcile-style document sync; no UI, no solco import (see internal/lsp/CLAUDE.md)
 internal/applog/ - size-bounded structured logging (2 MiB active + 3 backups) and stderr capture
 scripts/ - kit-parity.sh: how far the UI kit has drifted from the sibling `../solco` (local only)
 resources/ - the 1024 × 1024 app icon used by MyGo packaging and embedded in the welcome page
