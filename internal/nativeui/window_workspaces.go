@@ -252,6 +252,9 @@ func (w *Window) removeConfirm(c *ui.Context) {
 	if sh.commitDraftPresent() {
 		message = "The commit message you started in it will be lost."
 	}
+	if sh.term.askBusy {
+		message = "A process is still running in its terminal; removing the workspace ends it."
+	}
 	if n := sh.dirtyFileName(); n != "" {
 		message = "Your unsaved edits in “" + n + "” will be lost."
 	}

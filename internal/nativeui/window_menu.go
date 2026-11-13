@@ -151,6 +151,7 @@ func (w *Window) MenuBar() *mygo.Menu {
 		// No accelerator: ⌘B is the window's own shortcut, and a toggle must
 		// not have two ways to fire in one keystroke.
 		do("Toggle Sidebar", "", w.toggleSidebar),
+		repo("Toggle Terminal", accelTerminal, func(sh *Shell) { sh.toggleTerminal() }),
 		repo("Refresh", accelRefresh, func(sh *Shell) { sh.refreshCurrent() }),
 		mygo.Separator(),
 		do("Show Next Workspace", accelNextWorkspace, func() { w.stepWorkspace(1) }),

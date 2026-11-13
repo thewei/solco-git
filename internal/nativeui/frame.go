@@ -414,6 +414,7 @@ func (s *Shell) titleTools(c *ui.Context) {
 			s.gdLayoutControl(c)
 		}
 		s.syncButtons(c)
+		s.terminalToggle(c)
 		switch s.currentView() {
 		case viewFiles:
 			headerActions(c, s.filesActionItems)
@@ -463,8 +464,10 @@ func (s *Shell) stage(c *ui.Context) {
 		}
 		if s.currentView() == viewFiles {
 			s.filesPage(c)
-			return
+		} else {
+			gorexContentCard(c, gorexColorsOf(t.Dark), func() { s.gitSplitReviewSurface(c) })
 		}
-		gorexContentCard(c, gorexColorsOf(t.Dark), func() { s.gitSplitReviewSurface(c) })
+		_, windowH := c.Size()
+		s.terminalDrawer(c, windowH-termPageChrome)
 	})
 }

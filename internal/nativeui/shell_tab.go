@@ -116,6 +116,7 @@ func (s *Shell) Close() {
 		s.git.rootCancel = nil
 	}
 	s.closeStaticPreview()
+	s.closeTerminal()
 }
 
 // refreshCurrent is ⌘R: re-read what the front view shows, and the remote's

@@ -373,7 +373,9 @@ func (w *Window) requestRemoveWorkspace(i int) {
 	if i < 0 || i >= len(w.workspaces) {
 		return
 	}
-	if w.workspaceNeedsConfirm(w.workspaces[i]) {
+	sh := w.workspaces[i].sh
+	sh.term.askBusy = sh.termBusy() // asked once, here, not per frame
+	if w.workspaceNeedsConfirm(w.workspaces[i]) || sh.term.askBusy {
 		w.removeAsk = w.workspaces[i].id
 		return
 	}
