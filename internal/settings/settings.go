@@ -64,6 +64,10 @@ type WorkbenchSettings struct {
 	// terminal) instead of this app's own drawer; stored this way round so the
 	// default is the drawer (2026-11-13 decision, item 5).
 	TerminalInSolco bool `json:"terminal_in_solco,omitempty"`
+	// FormatOnSave formats the open file through its language server before ⌘S
+	// and the Save button write it. Off by default: formatting only happens
+	// when the user chose it (2026-11-13 decision, item 4).
+	FormatOnSave bool `json:"format_on_save,omitempty"`
 }
 
 // WindowSettings is the window's restorable state: the workspaces the user

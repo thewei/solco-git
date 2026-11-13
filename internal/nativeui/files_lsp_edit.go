@@ -177,25 +177,41 @@ func lspCompletions(items []lsp.CompletionItem) (int, []editor.Completion) {
 
 // lspFormat formats the whole document through the server: one undo step in
 // the buffer, nothing written until the user saves.
-func (s *Shell) lspFormat() {
+func (s *Shell) lspFormat() { s.lspFormatThen(nil) }
+
+// lspFormatThen is lspFormat that, when after is given (format on save), says
+// nothing about the outcome and runs after the answer whatever it was: a
+// server that is slow, fails or finds the text moved on never stops the save.
+func (s *Shell) lspFormatThen(after func()) {
 	caps, ok := s.lspWritable()
 	if !ok || !caps.Format {
+		if after != nil {
+			after()
+		}
 		return
 	}
 	s.lspFlush()
 	d := &s.lsp.doc
 	mgr, path, buf, version := s.lsp.mgr, d.path, d.buf, d.buf.Version()
 	ver := d.base + version
+	wait := 20 * time.Second
+	if after != nil {
+		wait = 5 * time.Second
+	}
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), wait)
 		defer cancel()
 		edits, err := mgr.Format(ctx, path, ver)
 		s.applyOnUI(func() {
-			if s.lsp.doc.buf != buf || buf.Version() != version {
-				s.pendingToast = "The text changed while formatting — nothing was changed."
-				return
-			}
+			moved := s.lsp.doc.buf != buf || buf.Version() != version
 			switch {
+			case after != nil:
+				if !moved && err == nil && len(edits) > 0 {
+					applyServerEdits(buf, edits)
+				}
+				after()
+			case moved:
+				s.pendingToast = "The text changed while formatting — nothing was changed."
 			case err != nil:
 				s.pendingToast = "Format Document: " + lspFailure(err)
 			case len(edits) == 0:
@@ -206,6 +222,17 @@ func (s *Shell) lspFormat() {
 			}
 		})
 	}()
+}
+
+// saveRequested is ⌘S and the Save button: with Format on save chosen, the
+// server formats first and the write follows its answer. The sheets that save
+// "before you open another file" write what is in the buffer as it is.
+func (s *Shell) saveRequested() {
+	if s.settings.Workbench.FormatOnSave && s.fileDirty() && !s.edit.gone && !s.edit.diskChanged {
+		s.lspFormatThen(func() { s.saveEdit() })
+		return
+	}
+	s.saveEdit()
 }
 
 // applyServerEdits applies a server's edits to the buffer as one undo step.

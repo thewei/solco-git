@@ -62,7 +62,7 @@ func (w *Window) settingsSheet(c *ui.Context) {
 						}),
 					)
 					w.terminalGroup(c, cfg)
-					w.languageServersGroup(c)
+					w.languageServersGroup(c, cfg)
 					settingsGroup(c, "Git",
 						row("Auto-fetch", "Fetches the remote of each workspace you have opened this session, quietly, in the background. It never merges or pushes.", func() {
 							label := autoFetchLabel(cfg.Workbench.AutoFetchMinutes)
@@ -117,8 +117,12 @@ func (w *Window) terminalGroup(c *ui.Context, cfg settings.Settings) {
 // languageServersGroup is Settings → Language servers: what Solco Git found
 // on this Mac. It installs nothing; a language with no server just has no
 // problems, hover or go to definition.
-func (w *Window) languageServersGroup(c *ui.Context) {
-	var rows []settingsRow
+func (w *Window) languageServersGroup(c *ui.Context, cfg settings.Settings) {
+	rows := []settingsRow{row("Format on save", "Formats the file through its language server before ⌘S and Save write it. A server that is slow or fails never stops the save.", func() {
+		if on, changed := settingSwitch(c, "Format on save", cfg.Workbench.FormatOnSave); changed {
+			w.change(func(v *settings.Settings) { v.Workbench.FormatOnSave = on })
+		}
+	})}
 	for _, d := range w.servers.list() {
 		rows = append(rows, row(d.Spec.Name, languageServerNote(d), func() {
 			if d.Command != nil {

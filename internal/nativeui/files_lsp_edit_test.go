@@ -227,3 +227,49 @@ func TestLspWordAtFindsTheIdentifierAroundTheCaret(t *testing.T) {
 		t.Errorf("on punctuation and spaces there is no name: %q", got)
 	}
 }
+
+func formatOnSaveShell(t *testing.T, on bool) (*uiPump, *Shell, *ui.Tester, string, string) {
+	t.Helper()
+	pump, sh, tt, path, log := editableGo(t, map[string][]byte{"a.go": []byte("package a\n\n  func Do() {}\n")})
+	sh.settings.Workbench.FormatOnSave = on
+	typeAtEnd(sh, "// x\n")
+	return pump, sh, tt, path, log
+}
+
+func TestFormatOnSaveFormatsThenWritesAndIsOffByDefault(t *testing.T) {
+	pump, sh, tt, path, log := formatOnSaveShell(t, true)
+	sh.saveRequested()
+	framesUntil(t, tt, pump, "the save", func() bool { return strings.Contains(read(t, path), "\tfunc Do()") })
+	if got := read(t, path); got != "package a\n\n\tfunc Do() {}\n// x\n" || sh.fileDirty() {
+		t.Errorf("the file holds the formatted text and the buffer is clean: %q dirty=%v", got, sh.fileDirty())
+	}
+	if calls(log, "formatting") != 1 {
+		t.Errorf("one format request: %s", serverCalls(log))
+	}
+
+	pump, sh, tt, path, log = formatOnSaveShell(t, false)
+	sh.saveRequested()
+	settle(tt, pump, 4)
+	if got := read(t, path); got != "package a\n\n  func Do() {}\n// x\n" || calls(log, "formatting") != 0 {
+		t.Errorf("off: saved as typed, nothing asked: %q %s", got, serverCalls(log))
+	}
+}
+
+func TestFormatOnSaveStillSavesWhenTheServerCannotFormatOrTheTextMovedOn(t *testing.T) {
+	t.Setenv("LSP_FAKE_CAPS", "read")
+	_, sh, _, path, _ := formatOnSaveShell(t, true)
+	sh.saveRequested()
+	if got := read(t, path); got != "package a\n\n  func Do() {}\n// x\n" {
+		t.Errorf("no format capability: the save is immediate and unformatted: %q", got)
+	}
+}
+
+func TestFormatOnSaveSavesWhatIsThereIfTheTextMovedOnDuringTheFormat(t *testing.T) {
+	pump, sh, tt, path, _ := formatOnSaveShell(t, true)
+	sh.saveRequested()
+	typeAtEnd(sh, "// y\n") // before the answer is applied
+	framesUntil(t, tt, pump, "the save", func() bool { return strings.Contains(read(t, path), "// y") })
+	if got := read(t, path); !strings.Contains(got, "  func Do()") {
+		t.Errorf("a stale format is dropped, the text is saved as it is: %q", got)
+	}
+}

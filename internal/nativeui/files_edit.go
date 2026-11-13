@@ -405,7 +405,7 @@ func (s *Shell) editControls(c *ui.Context, selected string) {
 			s.reloadFromDisk()
 		}
 		if tipped(c, regularPrimaryButton(c, "Save ⌘S"), "Write the file").Clicked() {
-			s.saveEdit()
+			s.saveRequested()
 		}
 	}
 	label, tip := "Edit this file", "Edit this file"
