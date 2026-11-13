@@ -61,6 +61,7 @@ func (w *Window) settingsSheet(c *ui.Context) {
 							}
 						}),
 					)
+					w.terminalGroup(c, cfg)
 					settingsGroup(c, "Git",
 						row("Auto-fetch", "Fetches the remote of each workspace you have opened this session, quietly, in the background. It never merges or pushes.", func() {
 							label := autoFetchLabel(cfg.Workbench.AutoFetchMinutes)
@@ -85,6 +86,31 @@ func (w *Window) settingsSheet(c *ui.Context) {
 			})
 		})
 	})
+}
+
+// terminalGroup is Settings → Terminal: whose terminal Open Terminal (⌃`) is.
+// In Solco Git is this app's own drawer; In Solco hands the repository to
+// Solco, where Herdr owns the terminal.
+func (w *Window) terminalGroup(c *ui.Context, cfg settings.Settings) {
+	inSolco := cfg.Workbench.TerminalInSolco
+	note := "A drawer under the page runs your login shell in the repository folder. Closing it ends its processes; nothing is restored."
+	if inSolco {
+		note = "Open Terminal hands the repository to Solco, where Herdr owns the terminal. Solco Git draws no terminal of its own."
+		if !w.solco.Available() {
+			note = "Solco isn't installed, so Open Terminal does nothing until you install it or choose In Solco Git."
+		}
+	}
+	settingsGroup(c, "Terminal",
+		row("Where Open Terminal goes", note, func() {
+			chosen := 0
+			if inSolco {
+				chosen = 1
+			}
+			if segmentedControl(c, &chosen, "In Solco Git", "In Solco").Label("Where Open Terminal goes").Changed() {
+				w.change(func(v *settings.Settings) { v.Workbench.TerminalInSolco = chosen == 1 })
+			}
+		}),
+	)
 }
 
 // change writes one preference.

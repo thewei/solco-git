@@ -14,7 +14,7 @@ Solco Git 的全部呈现层；每个文件开头的 L3 头（`[INPUT]/[OUTPUT]/
 - `window_dialogs.go`：不属于任何仓库的浮层（设置、移除工作区确认）。
 - `welcome.go`：零工作区页：复用资源包嵌入的应用图标，显示 Open Repository…（⌘O）、最近列表与拖入提示。
 - `quick_launch.go`：快开浮层的壳（Files / Text / Repos 三标签，切标签保留输入）与 Repos 标签：⇧⌘O，已开工作区与最近仓库的筛选列表（工作区下拉复用它的行与匹配）。
-- `terminal_drawer.go`：底部终端抽屉（⌃`，每个工作区一个用户登录 shell，工作目录 = 仓库根；官方 plugins/terminal，库在 Contents/Resources）：Restart / Close 在有进程运行时先问，移除工作区同；用 sh 包装写下 shell 的 pid 来判断「有进程在跑」（插件没有这个接口）；本应用自己的本地 shell，不是 Herdr、不持久化、不记终端字节（2026-11-13 决定第 (5) 条）。
+- `terminal_drawer.go`：底部终端抽屉（⌃`，每个工作区一个用户登录 shell，工作目录 = 仓库根；官方 plugins/terminal，库在 Contents/Resources）：Restart / Close 在有进程运行时先问，移除工作区同；用 sh 包装写下 shell 的 pid 来判断「有进程在跑」（插件没有这个接口）；本应用自己的本地 shell，不是 Herdr、不持久化、不记终端字节；`openTerminal` 按设置「终端归属」分流：In Solco Git 开抽屉，In Solco 经 `platform.SolcoLink` 把仓库根交给 Solco（没装就说明、不回退）（2026-11-13 决定第 (5) 条）。
 - `quick_open.go`：快开的 Files（⌘P，子序列排名、空输入列最近打开的）与 Text（⇧⌘F，内容搜索、停顿后才起进程）两标签：↑↓ / ↵ 打开（Text 落在命中行）、右侧只读预览（读前 256 KiB）；文件索引与侧栏搜索共用，不需要 fzf（2026-11-13 决定第 (3) 条）。
 - `external_open.go`：`solcogit://open?repo=&view=&file=` 与 `open -a` 的唯一入口（解析、校验、不记日志）。
 - `shortcuts.go`：键位单一来源——菜单里列出的键就是绑定的键（⌘B 是唯一的窗口内快捷键，其余都是菜单加速键）。
@@ -71,6 +71,7 @@ UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差�
 - `window_landing_test.go`：冷启动经链接落点——首读之后列表顶上是被点名文件的卡，内容分批读到后也不动，过了揭示窗口选中行仍是它。
 - `window_polish_test.go`：首读之前侧栏说 Reading references… 而不是五个 0；外部改动直接读到、没有「Files changed on disk」提示；窄卡不画 Viewed 框；提交计数按单复数（1 commit）；欢迎页的两句话各占一行。
 - `window_render_test.go`、`files_evidence_test.go`：与设计稿逐屏对照的 PNG 证据（设置 `SOLCOGIT_EVIDENCE` 才落盘）。
+- `terminal_solco_test.go`：终端归属的合同——默认是抽屉；选 In Solco 后 ⌃` / 按钮 / View 菜单项把仓库根交给 Solco 且不开抽屉；Solco 没装就说明、不悄悄退回抽屉；设置页的二选一写进偏好、菜单项与按钮随之改；去掉归属判断 / 没装时回退 / 换目录三个变异必红。
 - `terminal_drawer_test.go`：shell 在仓库根起、包装层的 pid 就是 shell 的 pid、Close / Restart 无进程直接结束有进程先问（Cancel 不动、确认才杀进程）、移除工作区有进程先问、shell 退出后显示退出码；取不到终端库时整组跳过；去掉询问 / Dir / pid 文件三个变异检查必红。
 - `quick_open_test.go`：Files 排名与 ↵ 打开、名字命中先于文件夹命中、空输入列最近打开的与无命中说明、Text 落在命中行与不足两字不搜、切标签保留输入、无工作区时落在 Repos；预览 / 排名 / ↵ 打开做过变异检查。
 - `files_edit_test.go`：默认只读与铅笔、原子写盘（CRLF / 权限 / 无残留）、符号链接与仓库边界、写失败不动原文件、Git 写操作与切文件前先问（Cancel / Save / Discard 三条路）、磁盘被改写的三种处理与 Save 自查、不可编辑的文件、退出与移除工作区的确认、重命名 / 删除拒绝；每条规则做过变异检查。

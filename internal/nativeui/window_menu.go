@@ -23,13 +23,22 @@ type menuState struct {
 	canBack     bool
 	canForward  bool
 	hideStashes bool
+	inSolco     bool // the Terminal item's wording
 	recent      string
+}
+
+// terminalMenuLabel is the View menu's terminal item for the chosen owner.
+func terminalMenuLabel(inSolco bool) string {
+	if inSolco {
+		return "Open Terminal in Solco"
+	}
+	return "Toggle Terminal"
 }
 
 func (w *Window) currentMenuState() menuState {
 	state := menuState{
 		hasRepo: w.activeShell() != nil, canBack: w.nav.canBack(), canForward: w.nav.canForward(),
-		hideStashes: w.settings.Workbench.HideStashes,
+		hideStashes: w.settings.Workbench.HideStashes, inSolco: w.settings.Workbench.TerminalInSolco,
 	}
 	for _, root := range w.settings.Window.Recent {
 		state.recent += root + "\n"
@@ -151,7 +160,7 @@ func (w *Window) MenuBar() *mygo.Menu {
 		// No accelerator: ⌘B is the window's own shortcut, and a toggle must
 		// not have two ways to fire in one keystroke.
 		do("Toggle Sidebar", "", w.toggleSidebar),
-		repo("Toggle Terminal", accelTerminal, func(sh *Shell) { sh.toggleTerminal() }),
+		repo(terminalMenuLabel(w.settings.Workbench.TerminalInSolco), accelTerminal, func(sh *Shell) { sh.openTerminal() }),
 		repo("Refresh", accelRefresh, func(sh *Shell) { sh.refreshCurrent() }),
 		mygo.Separator(),
 		do("Show Next Workspace", accelNextWorkspace, func() { w.stepWorkspace(1) }),

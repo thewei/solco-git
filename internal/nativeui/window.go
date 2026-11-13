@@ -19,6 +19,7 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/thewei/solco-gitkit/gitworkbench"
 
+	"github.com/thewei/solco-git/internal/platform"
 	"github.com/thewei/solco-git/internal/settings"
 )
 
@@ -48,6 +49,7 @@ type Window struct {
 	win    *mygo.Window
 	store  settings.Store
 	runner *gitworkbench.Runner
+	solco  *platform.SolcoLink // the one-way link to Solco (terminal owner: In Solco)
 
 	setMu    sync.Mutex // serializes read-modify-write of the preferences
 	settings settings.Settings
@@ -115,6 +117,7 @@ func NewWindow(store settings.Store) *Window {
 	w := &Window{
 		store:    store,
 		runner:   &gitworkbench.Runner{},
+		solco:    platform.NewSolcoLink(),
 		active:   -1,
 		nextID:   1,
 		sidebarW: sidebarWidth,

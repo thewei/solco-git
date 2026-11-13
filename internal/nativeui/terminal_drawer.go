@@ -16,6 +16,8 @@ import (
 
 	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/ui"
+
+	"github.com/thewei/solco-git/internal/platform"
 )
 
 const (
@@ -48,6 +50,38 @@ type termDrawer struct {
 	// what pgrep said when it was raised (never per frame).
 	ask     string
 	askBusy bool
+}
+
+// terminalInSolco is the Settings choice "Open Terminal goes to Solco".
+func (s *Shell) terminalInSolco() bool { return s.settings.Workbench.TerminalInSolco }
+
+// solcoLink is the link to Solco; nil in headless tests that make no Window.
+func (s *Shell) solcoLink() *platform.SolcoLink {
+	if s.w == nil {
+		return nil
+	}
+	return s.w.solco
+}
+
+// openTerminal is ⌃` and the band's button: this app's drawer, or — when the
+// Settings choice says so — a terminal in Solco on this repository. It never
+// falls back to the drawer without being told to: Solco missing is said.
+func (s *Shell) openTerminal() {
+	if !s.terminalInSolco() {
+		s.toggleTerminal()
+		return
+	}
+	link := s.solcoLink()
+	if !link.Available() {
+		s.pendingToast = "Solco isn't installed — choose In Solco Git in Settings to use this app's terminal"
+		return
+	}
+	go func() {
+		if err := link.OpenTerminal(s.dir); err != nil {
+			slog.Warn("open terminal in Solco failed", "err", err)
+			s.applyOnUI(func() { s.pendingToast = "Couldn't hand the terminal to Solco" })
+		}
+	}()
 }
 
 // toggleTerminal shows or hides the drawer; the first time it starts the shell.
@@ -248,14 +282,26 @@ func (s *Shell) terminalAsk(c *ui.Context) {
 	}
 }
 
-// terminalToggle is the title band's button.
+// terminalToggle is the title band's button: the drawer's switch, or "Open in
+// Solco" when that is where the terminal lives (disabled, with the reason,
+// while Solco is not installed).
 func (s *Shell) terminalToggle(c *ui.Context) {
+	k := gorexColorsOf(c.Theme().Dark)
+	if s.terminalInSolco() {
+		if !s.solcoLink().Available() {
+			gorexIconButtonDisabled(c, k, iconTerminal, "Open terminal in Solco", "Solco isn't installed", gorexIconBtn, gorexIconGlyph)
+			return
+		}
+		if gorexIconButton(c, k, iconTerminal, "Open terminal in Solco", "Open terminal in Solco", false, gorexIconBtn, gorexIconGlyph).Clicked() {
+			s.openTerminal()
+		}
+		return
+	}
 	label := "Show terminal"
 	if s.term.open {
 		label = "Hide terminal"
 	}
-	k := gorexColorsOf(c.Theme().Dark)
 	if gorexIconButton(c, k, iconTerminal, label, label, s.term.open, gorexIconBtn, gorexIconGlyph).Clicked() {
-		s.toggleTerminal()
+		s.openTerminal()
 	}
 }

@@ -60,6 +60,10 @@ type WorkbenchSettings struct {
 	// HideMovedLines turns the diff's moved-line highlight off (it is on by
 	// default, so the switch is stored the other way round).
 	HideMovedLines bool `json:"hide_moved_lines,omitempty"`
+	// TerminalInSolco sends Open Terminal to Solco (where Herdr owns the
+	// terminal) instead of this app's own drawer; stored this way round so the
+	// default is the drawer (2026-11-13 decision, item 5).
+	TerminalInSolco bool `json:"terminal_in_solco,omitempty"`
 }
 
 // WindowSettings is the window's restorable state: the workspaces the user
