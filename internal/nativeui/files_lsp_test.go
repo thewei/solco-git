@@ -273,4 +273,9 @@ func TestSettingsPutsEditorAndLanguageServersAfterAppearance(t *testing.T) {
 	if !(theme < autosave && autosave < term) {
 		t.Errorf("order: Appearance %v, Editor %v, Terminal %v", theme, autosave, term)
 	}
+	// and the whole Editor group is above the sheet's Done button, in the
+	// scroll area's first screen, without scrolling
+	if fmtInfo, ok := tt.Access("Format on save"); !ok || fmtInfo.Bounds.Y+fmtInfo.Bounds.H > y("Done") {
+		t.Errorf("Format on save is not on the first screen: %+v (Done at %v)", fmtInfo.Bounds, y("Done"))
+	}
 }

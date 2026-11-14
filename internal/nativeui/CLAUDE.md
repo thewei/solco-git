@@ -85,7 +85,7 @@ UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差�
 - `quick_open_test.go` 的标记用例：每类命中（名字 / 子序列 / 文件夹 / 多词 / 大小写）标出的正是命中处，折叠改变偏移的路径不标，行带着自己的标记并画出来。
 - `terminal_drawer_test.go` 的退出用例：空闲 shell 不拦退出、有进程在跑时 ⌘Q 弹「Quit with a running process?」、Cancel 什么都不动、Quit Anyway 才退（`Window.QuitNeedsAsk` / `BusyTerminals`，`main.go` 的 OnBeforeQuit 用它）。
 - `files_edit_more_test.go`：自动保存默认关且开了之后静默写盘、Git 忙时顺延、磁盘被改写不写；Compare… 的 DiffBase 与还原；Save As 仓库内 / 仓库外 / 同一路径 / 覆盖已有文件 / 经符号链接指向仓库的路径（也要列进 Files 树）。变异检查：自动保存忽略开关（两处守卫都去掉才红）/ 忽略 Git 忙、Compare 不还原、Save As 仓库内不标已存、`underRoot` 不解析候选路径、Save As 后不刷新 Files 树，对应测试必红。
-- `files_edit_more_test.go` 的未保存圆点用例（`TestTheOpenFilesTreeRowCarriesAnUnsavedDot`）：打开的文件缓冲区有未写入的编辑时，Files 树里那一行带一个圆点（`filesUnsavedDot`，名字 “Unsaved changes”），保存后消失；去掉判断必红。设置页顺序见 `files_lsp_test.go` 的 `TestSettingsPutsEditorAndLanguageServersAfterAppearance`（调回旧顺序必红）。
+- `files_edit_more_test.go` 的未保存圆点用例（`TestTheOpenFilesTreeRowCarriesAnUnsavedDot`）：打开的文件缓冲区有未写入的编辑时，Files 树里那一行带一个圆点（`filesUnsavedDot`，名字 “Unsaved changes”），保存后消失；去掉判断必红。设置页顺序见 `files_lsp_test.go` 的 `TestSettingsPutsEditorAndLanguageServersAfterAppearance`（调回旧顺序、或把滚动区压矮到 Editor 组掉到 Done 之下，必红；滚动区 460 高度已够让整个 Editor 组在第一屏，所以高度没动）。
 - `files_lsp_edit_test.go`：E5 的合同——补全列出条目且不列需要 import 的、文本已变的答案丢掉、只读不发请求、格式化一步撤销且不写盘、重命名原样改已关闭文件（CRLF 与整词）且缓冲区一步撤销、有未保存编辑时先弹表（取消什么都不动、保存后一并改）、碰仓库外的重命名不写任何东西、没有能力不发请求、F2 / ⌥⇧F 的路由、⌥⇧F 后紧跟的 “Ï” 文本被吞（去掉 `dropText` 必红）。格式化会关掉打开着的补全列表。变异检查：补全不比版本、重命名不查仓库外、脏缓冲区不弹表、已关闭文件按 LF 写、保存时格式化忽略开关或应用过期的格式化，对应测试必红。
 - `gd_shortcuts_test.go`：Changes 视图的单键快捷键（J / K / ⌥Z）在提交主题输入框取走文本时让路——键入 jk 与 macOS 随后送来的 “Ω” 都进输入框、⌥Z 不切换换行；输入框之外 ⌥Z 照常切换。
 - `files_git_test.go`、`commit_tree_test.go`、`multi_push_test.go`、`image_compare_test.go`：2026-11-07「Solco Git」决定里 Files 一节、按提交看整棵树、多引用推送、图片对比的回归防线。
