@@ -279,17 +279,12 @@ func (s *Shell) sidebarSectionHeader(c *ui.Context, spec sidebarSectionSpec) (ui
 		ui.Box(c).Width(treeGlyphGap).Shrink(0).PassThrough()
 		ui.Text(c, spec.Title).FontSize(Typography().Body).FontWeight(WeightSemibold).Grow(1).MinWidth(0).SingleLine()
 		// A non-zero count is a small pill so the header reads as the level
-		// above its rows; a zero stays plain text and recedes.
+		// above its rows; a zero is not drawn (2026-11-14 UX pass).
 		count := func() {
 			if spec.Count == 0 {
-				ui.Textf(c, "%d", spec.Count).FontSize(Typography().BodySmall).TextColor(t.TextMuted).Shrink(0)
-				return
+				return // a zero says nothing: the header is the whole message
 			}
-			ui.Row(c).Height(16).Padding(0, 6).Shrink(0).Center().Radius(Radius().Pill).
-				Background(t.TextMuted.Alpha(0.16)).Children(func() {
-				ui.Textf(c, "%d", spec.Count).FontSize(Typography().BodySmall).FontWeight(WeightMedium).
-					TextColor(t.TextMuted.Mix(t.Text, 0.35)).SingleLine()
-			})
+			neutralCountBadge(c, itoa(spec.Count))
 		}
 		if spec.Trailing != nil {
 			count()

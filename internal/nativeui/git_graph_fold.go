@@ -132,8 +132,7 @@ func (s *Shell) foldToggle(c *ui.Context, hash string, hiding int) {
 	}
 	ui.Row(c).Gap(2).AlignItems(ui.Center).Shrink(0).Children(func() {
 		if folded {
-			ui.Text(c, "+"+itoa(hiding)).FontSize(Typography().Micro).FontWeight(WeightSemibold).
-				TextColor(t.TextMuted).SingleLine()
+			neutralCountBadge(c, "+"+itoa(hiding))
 		}
 		if gorexIconButton(c, gorexColorsOf(t.Dark), svg, tip, tip, false, gorexRowBtn, gorexRowGlyph).Clicked() {
 			s.toggleFold(hash)

@@ -176,7 +176,7 @@ func (s *Shell) renderChangesRow(c *ui.Context, pal *gdPalette, row gitworkbench
 				}
 			}
 			if gdCountable(&cf) && (cf.Additions > 0 || cf.Deletions > 0) {
-				tipped(c, ui.Textf(c, "+%s -%s", gdCompact(cf.Additions), gdCompact(cf.Deletions)).
+				tipped(c, ui.Text(c, gdStatText(cf.Additions, cf.Deletions, gdCompact, "-")).
 					Font(gdCodeFont()).FontSize(Typography().BodySmall).FontWeight(WeightSemibold).TextColor(muted).Shrink(0), gdLines(cf.Additions, "added")+", "+gdLines(cf.Deletions, "removed"))
 				gdStatBar(c, pal, cf.Additions, cf.Deletions)
 			}

@@ -31,8 +31,11 @@ func (s *Shell) commitSurface(c *ui.Context) {
 				// Identity line: N files · +A -D on branch.
 				add, del := snap.TotalAdditions, snap.TotalDeletions
 				ui.Row(c).FillWidth().Gap(sp.S).AlignItems(ui.Center).Children(func() {
-					ui.Textf(c, "%d file%s · +%d -%d", len(snap.Files), pluralS(len(snap.Files)), add, del).
-						FontSize(Typography().Caption).TextColor(t.TextMuted)
+					identity := pluralFiles(len(snap.Files))
+					if stat := gdStatText(add, del, itoa, "-"); stat != "" {
+						identity += " · " + stat
+					}
+					ui.Text(c, identity).FontSize(Typography().Caption).TextColor(t.TextMuted)
 					if s.surface.commit.Captured {
 						statusPill(c, "review verified", ToneSuccess)
 					} else if s.surface.commit.ErrText != "" {
@@ -114,7 +117,7 @@ func (s *Shell) commitSurface(c *ui.Context) {
 							ui.Text(c, cf.Status.Letter()).FontSize(Typography().Micro).FontWeight(WeightSemibold).
 								TextColor(tokens.StatusColor(statusTone(cf.Status), t.Dark))
 							tipped(c, ui.Text(c, cf.Path).FontSize(Typography().BodySmall).Grow(1).MinWidth(0).SingleLine(), cf.Path)
-							ui.Text(c, "+"+itoa(cf.Additions)+" -"+itoa(cf.Deletions)).
+							ui.Text(c, gdStatText(cf.Additions, cf.Deletions, itoa, "-")).
 								FontSize(Typography().Micro).TextColor(t.TextMuted).SingleLine()
 						})
 					}
@@ -171,7 +174,9 @@ func (s *Shell) commitActionFooter(c *ui.Context) {
 			}
 			ready := len(selected) > 0 && strings.TrimSpace(s.surface.commit.Subject) != "" &&
 				!s.surface.commit.InFlight && s.surface.commit.Captured
-			ui.Textf(c, "%d selected", len(selected)).FontSize(Typography().Caption).TextColor(t.TextMuted)
+			if len(selected) > 0 {
+				ui.Textf(c, "%d selected", len(selected)).FontSize(Typography().Caption).TextColor(t.TextMuted)
+			}
 			ui.Box(c).Grow(1)
 			if compactButton(c, "Cancel Commit").Clicked() {
 				s.requestCancelCommit()

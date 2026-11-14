@@ -54,7 +54,7 @@ func crumbItemRow(c *ui.Context, glyph *ui.SVG, label string, selected bool) ui.
 	ui.Box(c).Children(func() {
 		row = ui.ButtonBase(c).
 			FillWidth().
-			Height(28).
+			Height(Controls().RegularHeight).
 			Radius(Radius().Row).
 			Padding(0, 8).
 			Gap(7).

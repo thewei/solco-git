@@ -369,3 +369,23 @@ type splitDrag struct {
 // Changes / Commits list head, the terminal drawer head): one step above the
 // regular control, so the controls inside it keep a margin.
 const sectionHeadHeight float32 = 32
+
+// countBadge is the one pill for a number or a short count — a section's item
+// count, a branch's ahead / behind, a "+3 more" overflow: 16 points high,
+// round, the text in ink over a wash of the same family. Every count wears it
+// (2026-11-14 UX pass: three look-alikes had drifted apart in radius, wash and
+// weight).
+func countBadge(c *ui.Context, text string, ink, wash ui.Color) ui.Element {
+	row := ui.Row(c).Height(16).Padding(0, 6).Shrink(0).Center().Radius(Radius().Pill).Background(wash)
+	row.Children(func() {
+		ui.Text(c, text).FontSize(Typography().BodySmall).FontWeight(WeightMedium).TextColor(ink).SingleLine()
+	})
+	return row
+}
+
+// neutralCountBadge is countBadge in the muted family: the tone of a count that
+// carries no judgement (items in a section, hidden rows).
+func neutralCountBadge(c *ui.Context, text string) ui.Element {
+	t := c.Theme()
+	return countBadge(c, text, t.TextMuted.Mix(t.Text, 0.35), t.TextMuted.Alpha(0.16))
+}

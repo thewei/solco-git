@@ -349,7 +349,7 @@ func (s *Shell) courierPreviewPane(c *ui.Context, st *courierState) {
 		ui.Text(c, "Fits cleanly — "+pluralFiles(len(st.preview.Files))).FontSize(Typography().BodySmall).FontWeight(WeightSemibold).TextColor(t.Success)
 		for _, f := range st.preview.Files {
 			ui.Row(c).Gap(10).Children(func() {
-				ui.Text(c, "+"+itoa(f.Added)+" −"+itoa(f.Removed)).Font(gdCodeFont()).FontSize(Typography().BodySmall).TextColor(t.TextMuted).Width(80).Shrink(0)
+				ui.Text(c, gdStatText(f.Added, f.Removed, itoa, "−")).Font(gdCodeFont()).FontSize(Typography().BodySmall).TextColor(t.TextMuted).Width(80).Shrink(0)
 				ui.Text(c, f.Path).Font(gdCodeFont()).FontSize(Typography().BodySmall).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
 			})
 		}

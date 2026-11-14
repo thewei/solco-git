@@ -267,10 +267,7 @@ func (s *Shell) gitTreeRow(c *ui.Context, it gitTreeItem, action func(), menu fu
 						ui.Text(c, part).FontSize(Typography().BodySmall).FontWeight(WeightMedium).TextColor(tone).SingleLine()
 						continue
 					}
-					ui.Row(c).Height(16).Padding(0, 6).Shrink(0).Center().Radius(Radius().Pill).
-						Background(tone.Alpha(0.16)).Children(func() {
-						ui.Text(c, part).FontSize(Typography().BodySmall).FontWeight(WeightMedium).TextColor(tone).SingleLine()
-					})
+					countBadge(c, part, tone, tone.Alpha(0.16))
 				}
 			})
 		}

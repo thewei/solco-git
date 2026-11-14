@@ -153,8 +153,7 @@ func gitCommitChips(c *ui.Context, chips []gitChip, accent ui.Color, click func(
 			for _, r := range chips[i:] {
 				rest = append(rest, r.text)
 			}
-			tipped(c, ui.Text(c, "+"+itoa(len(rest))).FontSize(Typography().Micro).FontWeight(WeightSemibold).
-				Padding(2, 5).Radius(Radius().Control).Background(t.SurfaceHover).TextColor(accent).SingleLine(), strings.Join(rest, "\n"))
+			tipped(c, neutralCountBadge(c, "+"+itoa(len(rest))), strings.Join(rest, "\n"))
 			return
 		}
 		tone := gitLaneColors[chip.tone%len(gitLaneColors)]

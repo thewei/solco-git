@@ -484,8 +484,12 @@ func (s *Shell) gdFileHeader(c *ui.Context, pal *gdPalette, idx int, f *gdFile) 
 		}
 		if adds, dels := f.sideCounts(); gdCountable(cf) && (adds > 0 || dels > 0) {
 			tipped(c, ui.Row(c).Gap(8).Padding(4, 9).Radius(Radius().Pill).Background(pal.pill).Shrink(0), gdLines(adds, "added")+", "+gdLines(dels, "removed")).Children(func() {
-				ui.Text(c, "+"+gdThousands(adds)).Font(gdCodeFont()).FontSize(Typography().BodySmall).FontWeight(WeightSemibold).TextColor(pal.addText)
-				ui.Text(c, "-"+gdThousands(dels)).Font(gdCodeFont()).FontSize(Typography().BodySmall).FontWeight(WeightSemibold).TextColor(pal.delText)
+				if adds > 0 {
+					ui.Text(c, "+"+gdThousands(adds)).Font(gdCodeFont()).FontSize(Typography().BodySmall).FontWeight(WeightSemibold).TextColor(pal.addText)
+				}
+				if dels > 0 {
+					ui.Text(c, "-"+gdThousands(dels)).Font(gdCodeFont()).FontSize(Typography().BodySmall).FontWeight(WeightSemibold).TextColor(pal.delText)
+				}
 			})
 		}
 		if badge := s.patchBadge(cf.Path); badge != "" && s.gdReviewingCommit() {

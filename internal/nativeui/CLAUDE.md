@@ -61,6 +61,7 @@ UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差�
 - `log_privacy_test.go`：日志合同——打开仓库、跑一次 Git 操作、收到一条被拒的链接后，默认级别的日志有操作名与工作区数，没有仓库路径/目录名/文件名/链接参数（抓取本身也被断言）。
 - `quick_commit_test.go`：空闲提交条上第一次点击 Commit 就打开提交对话框（按钮 KeepFocus；去掉则红：按下展开表单、按钮换了父级，松手落空）。
 - `staged_pane_test.go`：Staged 列表的高度——分隔条真的改它（旧的 Height 被 Grow 的 0% basis 吞掉，两个列表等分）、一个暂存文件不把 Unstaged 行挤到 Staged 头后面。分隔条逐像素跟手、上下都动（旧版从列表从未有过的存高度起拖，头一段拖动无效）、双击回默认；拖过之后 Staged 列表按用户高度站住，没拖时仍按行数封顶。五条拖拽缝（侧栏宽、Changes 两栏、历史/差异、文件导航、终端抽屉）共用 `ds_components.go` 的 `splitHandle`（8 pt 抓取带、居中发丝线、悬停/按住变 TextMuted、双击复位），不再各画各的。
+- `zero_stats_test.go`：零不上屏——`gdStatText`（+/- 统计只写非零的一侧）、分区标题的零计数不画、整屏没有恰好是 "0" / "-0" 的文字；`countBadge` / `neutralCountBadge`（`ds_components.go`）是所有数字角标的唯一药丸（分区计数、领先/落后、“+N”折叠与隐藏提交）。
 - `pane_sizes.go`：拖拽缝的尺寸记忆（`loadPaneSizes` 新工作区带上次尺寸、`splitFinished` 一次拖拽或双击复位结束的瞬间、`savePaneSizes` 四个尺寸一次写回 `window.panes`，未动过的存 0）；`pane_sizes_test.go`：拖完才写（途中不写）、下一个窗口按存值站、双击清掉、越界被夹住，短历史得短提交列表（用户拖过则保持其高度）。
 - `view_tabs_test.go`：侧栏三行视图的合同——Changes / Commits / Files 自上而下三行、整行宽、名称在 200/252/400 三种侧栏宽度下都画出；Changes 的三位数计数贴行尾且完整；选中是侧栏选中色的一层淡墨整行铺满、不是白纸（明暗两种外观），Files 树的 Changed | All 与搜索的 Files | Content 同样；点、方向键、悬停淡墨与提示（名称 + 计数 + ⌘1–3）。
 - `git_commit_graph_test.go`：路线图的合同——布局（线性、分叉/合并、车道收拢、多尖端与窗口外的父、分支线色沿线不变）、几何有界（槽宽不超上限、每行宽度随该行用到的车道）、画法（点与线真的画在车道上、车道之外是纸）、真实合并仓库经真实读取后画成两车道并渲染；变异（丢颜色传递、关掉收拢、合并标记）各自变红已核对。

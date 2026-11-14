@@ -174,6 +174,20 @@ func gdCountable(cf *gitworkbench.ChangeFile) bool {
 	return !cf.Binary && !cf.TooLarge
 }
 
+// gdStatText is a change count as one string — "+A -D" — with a zero side left
+// out ("+3", "-5", "" for neither): a "-0" on every added file is noise
+// (2026-11-14 UX pass). minus is the glyph in front of the removed count.
+func gdStatText(adds, dels int, format func(int) string, minus string) string {
+	var parts []string
+	if adds > 0 {
+		parts = append(parts, "+"+format(adds))
+	}
+	if dels > 0 {
+		parts = append(parts, minus+format(dels))
+	}
+	return strings.Join(parts, " ")
+}
+
 // gdWordMarks converts rune-index word-diff ranges into byte-offset marks.
 func gdWordMarks(text string, ranges []gitworkbench.WordRange, color ui.Color) []gdMark {
 	if len(ranges) == 0 {
