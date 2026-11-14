@@ -123,7 +123,10 @@ type gitService struct {
 	commitHash string
 	commitSnap *gitworkbench.ChangesSnapshot
 	// compare marks the commit review as "this commit against the working tree".
-	compare    bool
+	compare bool
+	// pairBase, with compare, makes the review "this commit against pairBase"
+	// (the Compare the Two Commits menu item) instead of against the work tree.
+	pairBase   string
 	commitMeta *gitworkbench.CommitInfo
 	// commitBody is the full message of the commit under review (subject,
 	// blank line, body); read apart from the list, which keeps only subjects.

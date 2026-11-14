@@ -182,6 +182,40 @@ func (s *Shell) stageFiles(paths []string) {
 	})
 }
 
+// ignoreItems is the LazyGit pair on an untracked file's menu: a rule in the
+// repository's .gitignore, or one only this clone sees (info/exclude). A
+// tracked file has neither: ignoring it would not untrack it.
+func (s *Shell) ignoreItems(m *ui.Menu, cf *gitworkbench.ChangeFile) {
+	if s.gdReviewingCommit() || !cf.Untracked {
+		return
+	}
+	m.Separator()
+	if m.Item("Add to .gitignore").Chosen() {
+		s.ignorePaths([]string{cf.Path}, gitworkbench.IgnoreInRepository)
+	}
+	if m.Item("Add to .git/info/exclude").Chosen() {
+		s.ignorePaths([]string{cf.Path}, gitworkbench.IgnoreLocally)
+	}
+}
+
+func (s *Shell) ignorePaths(paths []string, scope gitworkbench.IgnoreScope) {
+	where := ".gitignore"
+	if scope == gitworkbench.IgnoreLocally {
+		where = ".git/info/exclude"
+	}
+	s.runGitOp("Ignore", func(ctx context.Context, root string) (string, error) {
+		n, err := s.git.runner.IgnorePaths(ctx, root, paths, scope)
+		if err != nil {
+			return "", err
+		}
+		s.applyOnUI(s.refreshFiles)
+		if n == 0 {
+			return "Already in " + where, nil
+		}
+		return "Added " + pluralFiles(n) + " to " + where, nil
+	})
+}
+
 // unstageFiles moves the index changes of paths back to the worktree.
 func (s *Shell) unstageFiles(paths []string) {
 	if len(paths) == 0 {
@@ -427,13 +461,25 @@ func (s *Shell) reviewCommit(hash string) { s.reviewCommitAs(hash, false) }
 // reviewCommitAs reads one commit's diff; compare reads it against the working
 // tree instead (the commit's right-click "Compare to Local Changes").
 func (s *Shell) reviewCommitAs(hash string, compare bool) {
+	s.reviewCommitVs(hash, compare, "")
+}
+
+// compareTwoCommits reviews what changes from base to hash.
+func (s *Shell) compareTwoCommits(base, hash string) {
+	s.reviewCommitVs(hash, true, base)
+}
+
+// reviewCommitVs is the one review loader: the commit alone, against the
+// work tree (compare), or against another commit (compare with a base).
+func (s *Shell) reviewCommitVs(hash string, compare bool, base string) {
 	if s.git == nil || s.git.root == "" || hash == "" {
 		return
 	}
-	if s.git.source == gdSourceCommit && s.git.commitHash == hash && s.git.compare == compare {
+	if s.git.source == gdSourceCommit && s.git.commitHash == hash && s.git.compare == compare && s.git.pairBase == base {
 		return
 	}
 	s.git.compare = compare
+	s.git.pairBase = base
 	if s.patch.commit != hash {
 		s.clearPatchSelection()
 	}
@@ -462,6 +508,11 @@ func (s *Shell) reviewCommitAs(hash string, compare bool) {
 		snapshot := s.git.runner.CommitSnapshot
 		if compare {
 			snapshot = s.git.runner.CompareToWorktree
+		}
+		if base != "" {
+			snapshot = func(ctx context.Context, root, hash string) (*gitworkbench.ChangesSnapshot, error) {
+				return s.git.runner.CompareCommits(ctx, root, base, hash)
+			}
 		}
 		if isStash && !compare {
 			// A stash reads as a whole: tracked changes plus untracked files.
@@ -505,6 +556,7 @@ func (s *Shell) reviewLocalChanges() {
 	}
 	s.git.source = gdSourceWorktree
 	s.git.compare = false
+	s.git.pairBase = ""
 	s.git.commitSnap = nil
 	s.git.commitMeta, s.git.commitBody = nil, ""
 	s.git.gdFiles = nil

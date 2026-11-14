@@ -379,6 +379,7 @@ func (s *Shell) gdFileHeader(c *ui.Context, pal *gdPalette, idx int, f *gdFile) 
 				s.discardChanges([]string{cf.Path})
 			}
 		}
+		s.ignoreItems(m, cf)
 		m.Separator()
 		if m.Item("Open in Editor").Disabled(cf.Status == gitworkbench.StatusDeleted).Chosen() {
 			s.openFileInEditor(cf.Path)

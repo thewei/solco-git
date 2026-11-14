@@ -669,7 +669,7 @@ func (s *Shell) gdContentSides() gdSides {
 		return gdSides{from: s.git.snapshot.Head}
 	}
 	snap := s.git.commitSnap
-	if s.git.compare || snap == nil {
+	if (s.git.compare && s.git.pairBase == "") || snap == nil {
 		return gdSides{from: s.git.commitHash}
 	}
 	from, to, _ := strings.Cut(snap.DiffBase, "..")

@@ -46,6 +46,14 @@ const historyUndoHint = " If it goes wrong, Repository ▸ Undo Git Action (⌥�
 // commitChosen reports whether a commit is among the ⌘ / ⇧ choice.
 func (s *Shell) commitChosen(hash string) bool { return s.commitChoice[hash] }
 
+// commitLabel names a commit as "abc1234 Subject" when the list holds it.
+func (s *Shell) commitLabel(hash string) string {
+	if i := slices.IndexFunc(s.git.commits, func(e gitworkbench.CommitInfo) bool { return e.Hash == hash }); i >= 0 {
+		return shortHash(hash) + " " + s.git.commits[i].Subject
+	}
+	return shortHash(hash)
+}
+
 // commitChoiceHashes returns the chosen commits in list order (newest first).
 func (s *Shell) commitChoiceHashes(entries []gitworkbench.CommitInfo) []string {
 	var out []string
@@ -118,6 +126,13 @@ func (s *Shell) commitAnchorOr(hash string) string {
 func (s *Shell) commitBatchMenu(m *ui.Menu, chosen []string) {
 	n := itoa(len(chosen))
 	busy := s.git.opBusy
+	if len(chosen) == 2 {
+		// chosen is newest first: the older commit is the base of the diff.
+		if m.Item("Compare the Two Commits").Chosen() {
+			s.compareTwoCommits(chosen[1], chosen[0])
+		}
+		m.Separator()
+	}
 	if m.Item("Squash " + n + " Commits into the One Below…").Disabled(busy).Chosen() {
 		s.openHistoryRewrite(gitworkbench.HistoryOp{Action: gitworkbench.HistorySquash, Hashes: chosen})
 	}

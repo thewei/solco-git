@@ -271,6 +271,7 @@ func (s *Shell) gdRowContextMenu(m *ui.Menu, cf *gitworkbench.ChangeFile) {
 			m.Separator()
 		}
 	}
+	s.ignoreItems(m, cf)
 	if !commit && cf.Status != gitworkbench.StatusDeleted {
 		if m.Item("Open in Editor").Chosen() {
 			s.openFileInEditor(cf.Path)

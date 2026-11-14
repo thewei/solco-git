@@ -787,7 +787,7 @@ func (s *Shell) gdFileLogItems(m *ui.Menu, cf *gitworkbench.ChangeFile) {
 	}
 	if commit {
 		s.patchItems(m, cf)
-		if m.Item("Restore File from This Commit…").Disabled(s.git.opBusy || (deleted && !s.git.compare)).Chosen() {
+		if m.Item("Restore File from This Commit…").Disabled(s.git.opBusy || (deleted && (!s.git.compare || s.git.pairBase != ""))).Chosen() {
 			s.confirmRestoreFile(s.git.commitHash, cf.Path)
 		}
 	} else if cf.Status != gitworkbench.StatusConflicted {

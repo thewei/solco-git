@@ -391,6 +391,18 @@ func (s *Shell) gitCommitStrip(c *ui.Context) {
 			busyNote(c, "Reading commit…")
 			return
 		}
+		if s.git.compare && s.git.pairBase != "" {
+			base := s.git.pairBase
+			ui.Row(c).FillWidth().Gap(10).AlignItems(ui.Center).Children(func() {
+				ui.Text(c, "Compared "+shortHash(base)+" → "+cm.Short).FontSize(Typography().Body).FontWeight(WeightSemibold).Shrink(0).SingleLine()
+				tipped(c, ui.Text(c, "What changes from "+s.commitLabel(base)+" to "+s.commitLabel(cm.Hash)+".").
+					FontSize(Typography().BodySmall).TextColor(t.TextMuted).Grow(1).MinWidth(0).SingleLine(), cm.Subject)
+				if compactButton(c, "Back to Commit").Clicked() {
+					s.reviewCommitAs(cm.Hash, false)
+				}
+			})
+			return
+		}
 		if s.git.compare {
 			ui.Row(c).FillWidth().Gap(10).AlignItems(ui.Center).Children(func() {
 				ui.Text(c, "Working tree compared with "+cm.Short).FontSize(Typography().Body).FontWeight(WeightSemibold).Shrink(0).SingleLine()
