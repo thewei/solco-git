@@ -187,6 +187,7 @@ func (w *Window) workspacePanel(c *ui.Context, k *gorexColors) {
 				for i, item := range items {
 					item := item
 					row := w.quickRow(c, k, item, p.query, i == p.sel, "workspace")
+					w.dragWorkspaceRow(c, row, item.WorkspaceID)
 					if reveal && i == p.sel {
 						row.ScrollIntoView()
 					}
@@ -212,6 +213,25 @@ func (w *Window) workspacePanel(c *ui.Context, k *gorexColors) {
 			w.openSettings()
 		}
 	})
+}
+
+// workspaceDrag is what a dragged workspace row carries.
+type workspaceDrag struct{ ID int }
+
+// dragWorkspaceRow makes row (the workspace id) both a handle and a target of
+// the list's order: drag it onto another row to take that row's place. The
+// row under a drag wears the accent wash, the one being dragged dims.
+func (w *Window) dragWorkspaceRow(c *ui.Context, row ui.Element, id int) {
+	row.Drag(workspaceDrag{id})
+	if d, over := ui.DragOver[workspaceDrag](row); over && d.ID != id {
+		row.Background(c.Theme().Accent.Alpha(0.16))
+	}
+	if row.Dragging() {
+		row.Opacity(0.5)
+	}
+	if d, ok := ui.Drop[workspaceDrag](row); ok {
+		w.dropWorkspace(d.ID, w.indexOfID(id))
+	}
 }
 
 // workspaceMenu is a workspace row's context menu. Removing only takes the
@@ -311,9 +331,16 @@ func (w *Window) workspacesGroup(c *ui.Context) {
 	})
 }
 
-// workspaceManageRow is one Settings row: the folder, its path, and the move
-// up / move down / remove buttons.
+// workspaceManageRow is one Settings row, draggable: the folder, its path, and
+// the move up / move down / remove buttons.
 func (w *Window) workspaceManageRow(c *ui.Context, k *gorexColors, i int, ws *workspace, label string) {
+	id := ws.id
+	row := ui.Column(c.Key("workspace-manage:" + itoa(id))).FillWidth()
+	row.Children(func() { w.workspaceManageFace(c, k, i, ws, label) })
+	w.dragWorkspaceRow(c, row, id)
+}
+
+func (w *Window) workspaceManageFace(c *ui.Context, k *gorexColors, i int, ws *workspace, label string) {
 	t := c.Theme()
 	id := ws.id
 	formRowLead(c, func() {

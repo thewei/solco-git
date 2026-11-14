@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -360,13 +361,23 @@ func (w *Window) stepWorkspace(delta int) {
 // moveWorkspace shifts workspace id up (-1) or down (+1) the list: the order
 // the pull-down shows. The front workspace stays in front.
 func (w *Window) moveWorkspace(id, delta int) {
+	w.dropWorkspace(id, w.indexOfID(id)+delta)
+}
+
+// dropWorkspace takes workspace id out of its place and puts it at index to
+// (the slot the row it was dropped on had), the others closing up around it.
+// The front workspace stays in front.
+func (w *Window) dropWorkspace(id, to int) {
 	from := w.indexOfID(id)
-	to := from + delta
-	if from < 0 || to < 0 || to >= len(w.workspaces) {
+	if from < 0 || to < 0 || to >= len(w.workspaces) || from == to {
 		return
 	}
 	front := w.workspaces[w.active]
-	w.workspaces[from], w.workspaces[to] = w.workspaces[to], w.workspaces[from]
+	ws := w.workspaces[from]
+	// A new slice, not an edit in place: a view that is still ranging over the
+	// old list this frame must not see a workspace twice.
+	order := slices.Delete(slices.Clone(w.workspaces), from, from+1)
+	w.workspaces = slices.Insert(order, to, ws)
 	w.active = w.indexOfID(front.id)
 	w.saveState()
 }

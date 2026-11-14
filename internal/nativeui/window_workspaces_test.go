@@ -474,3 +474,59 @@ func TestWorkspaceControlsAreTabStops(t *testing.T) {
 		}
 	}
 }
+
+// dragRow drags the row named from onto the row named to, in steps like a hand.
+func dragRow(tt *ui.Tester, pump *uiPump, from, to string) {
+	a, _ := tt.Find(from)
+	b, _ := tt.Find(to)
+	ax, ay := a.X+a.W/2, a.Y+a.H/2
+	bx, by := b.X+b.W/2, b.Y+b.H/2
+	tt.Press(ax, ay)
+	for i := 1; i <= 6; i++ {
+		f := float32(i) / 6
+		tt.Move(ax+(bx-ax)*f, ay+(by-ay)*f)
+		settle(tt, pump, 1)
+	}
+	tt.Release(bx, by)
+	settle(tt, pump, 3)
+}
+
+// A workspace row is dragged onto another to take its place — in the pull-down
+// and in Settings — and the workspace in front stays in front.
+func TestWorkspaceRowsAreReorderedByDragging(t *testing.T) {
+	w, pump, tt := openThree(t) // alpha, beta, gamma; gamma in front
+	if err := tt.Click("Workspace: gamma"); err != nil {
+		t.Fatal(err)
+	}
+	settle(tt, pump, 2)
+	dragRow(tt, pump, "alpha", "beta")
+	if got := workspaceNames(w); got != "beta,alpha,gamma" {
+		t.Fatalf("pull-down: alpha dropped on beta: %s, want beta,alpha,gamma", got)
+	}
+	if !w.picker.open {
+		t.Errorf("a drag closed the pull-down")
+	}
+	if filepath.Base(w.workspaces[w.active].sh.dir) != "gamma" {
+		t.Errorf("the front workspace moved: %s", filepath.Base(w.workspaces[w.active].sh.dir))
+	}
+	if got := w.settings.Window.Workspaces; len(got) != 3 || filepath.Base(got[0].Root) != "beta" {
+		t.Errorf("saved order = %+v", got)
+	}
+
+	w.picker.open = false
+	w.openSettings()
+	settle(tt, pump, 3)
+	// The sidebar foot also says "gamma": take the Settings rows by their buttons.
+	from, _ := tt.Find("Move gamma up")
+	to, _ := tt.Find("Move beta up")
+	tt.Press(430, from.Y+from.H/2)
+	for i := 1; i <= 6; i++ {
+		tt.Move(430, from.Y+(to.Y-from.Y)*float32(i)/6+from.H/2)
+		settle(tt, pump, 1)
+	}
+	tt.Release(430, to.Y+to.H/2)
+	settle(tt, pump, 3)
+	if got := workspaceNames(w); got != "gamma,beta,alpha" {
+		t.Errorf("settings: gamma dropped on beta (first row): %s, want gamma,beta,alpha", got)
+	}
+}

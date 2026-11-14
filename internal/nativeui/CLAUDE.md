@@ -83,7 +83,7 @@ UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差�
 - `git_courier_ui_test.go`：文件送达后在目标里是未暂存改动、源不变；Move 整文件（含未跟踪）与行；有暂存的文件 / 行可送不可移；对不上时不能送；换目标重新预检；没有其它 worktree 时给原因不开面板；提交里 Custom Patch 的选择送出并 Move（从提交里移除）；每条规则做过变异检查。
 - `gd_moved_test.go` / `gd_diffstat_test.go` / `git_stash_lines_ui_test.go` / `git_commit_filter_ui_test.go`：移动行用移动色、悬停提示方向、开关关掉后一个移动色像素都不剩；比例条的格数规则与文件行上真有一条；跨 hunk 选行后点 “Stash N Lines…”，stash 只含选中行、工作区只少这些行，已暂存 / 未跟踪 / 暂存侧不提供并说明原因，过期对话框被拒；Filters 弹层里填路径点 Apply 只剩 Git 答复的提交且画出来的行也只剩它们，文字搜索在其内，当前分支 / 被隐藏分支 / 错误日期保留旧列表 / 历史前进后重查 / reveal 清除。
 - `window_menu_test.go`：应用菜单合同——About 之后才是 Check for Updates…（main 接上更新器才有，每次重装菜单拿新菜单项），Settings… 与 Quit 不丢。
-- `window_workspaces_test.go`：工作区下拉与管理的合同——chip 始终是当前工作区；搜索（过滤、↑↓、↵ 切换并刷新、无命中时 ↵ 什么也不做）、最大高度与滚动、行右键移除、设置里的排序/移除/Add Workspace…（添加不抢前台）、每一种打开方式都加入清单、旧版 `tabs` 键读成工作区、清单上限、共享图标按钮是 Tab 停靠点。
+- `window_workspaces_test.go`：工作区下拉与管理的合同——chip 始终是当前工作区；搜索（过滤、↑↓、↵ 切换并刷新、无命中时 ↵ 什么也不做）、最大高度与滚动、行右键移除、设置里的排序/移除/Add Workspace…（添加不抢前台）、下拉与设置里的行都能拖到另一行的位置（`dragWorkspaceRow`/`dropWorkspace`；新切片不原地改，正在遍历的视图不会见到同一工作区两次；前台工作区不变）、每一种打开方式都加入清单、旧版 `tabs` 键读成工作区、清单上限、共享图标按钮是 Tab 停靠点。
 - `window_landing_test.go`：冷启动经链接落点——首读之后列表顶上是被点名文件的卡，内容分批读到后也不动，过了揭示窗口选中行仍是它。
 - `window_polish_test.go`：首读之前侧栏说 Reading references… 而不是五个 0；外部改动直接读到、没有「Files changed on disk」提示；窄卡不画 Viewed 框；提交计数按单复数（1 commit）；欢迎页的两句话各占一行。
 - `window_render_test.go`、`files_evidence_test.go`：与设计稿逐屏对照的 PNG 证据（设置 `SOLCOGIT_EVIDENCE` 才落盘）。
