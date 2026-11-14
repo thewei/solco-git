@@ -412,29 +412,48 @@ func (s *Shell) gdSectionHeader(c *ui.Context, title string, count int, open *bo
 // gdPaneDivider is the draggable line between the two panes: dragging it
 // hands the space to the pane above or below. Dragging down grows the
 // unstaged pane above, so the staged pane below shrinks by the same delta.
+// The drag starts from the height the Staged list actually has, so the line
+// follows the pointer from the first pixel (2026-11-14: it used to start from
+// a stored height the list never reached, and the first stretch of a drag
+// moved nothing).
 func (s *Shell) gdPaneDivider(c *ui.Context) {
-	pal := gdPaletteFor(c.Theme())
-	divider := ui.Box(c).Height(7).Shrink(0).Cursor(ui.CursorResizeNS).Label("Resize panes").
-		Children(func() {
-			ui.Box(c).Height(1).Margin(3, 8).Background(pal.cardBorder)
-		})
-	if _, dy, held := divider.Dragged(); held {
-		s.stagedPaneHeight = clampF(s.stagedPaneHeight-dy, 80, 4000)
+	drag := splitHandle(c, s.tokens(c.Theme().Dark), splitHorizontal, "Resize panes")
+	switch {
+	case drag.Reset:
+		s.stagedPaneHeight, s.stagedPaneSized = stagedPaneDefault, false
+	case drag.Held && drag.DY != 0: // a plain click on the line is not a size
+		s.stagedPaneHeight = max(s.stagedPaneShown-drag.DY, 60)
+		s.stagedPaneSized = true
 	}
 }
 
-// stagedListHeight is the Staged list's height: the dragged one, held to half
-// of the lists' column as the previous frame laid it out (written back, so a
-// drag past it leaves no dead stretch to drag back through, and the Unstaged
-// list above never shrinks to nothing), and no taller than its own rows plus
-// the list's 3-point padding top and bottom. Before a first layout there is no
-// column height and the dragged one stands.
+// stagedListHeight is the Staged list's height. By default it is the stored
+// one, no taller than its own rows plus the list's 3-point padding top and
+// bottom, so a short list leaves the room to the Unstaged rows above. Once the
+// user has dragged the divider the dragged height stands (blank space and all:
+// they chose it). Either way it is held between 60 points and what leaves the
+// Unstaged list 60 points and both headers, as the previous frame laid the
+// column out (written back, so a drag past it leaves no dead stretch to drag
+// back through). Before a first layout there is no column height and the
+// stored one stands.
 func (s *Shell) stagedListHeight(listsH float32, rows int) float32 {
 	if listsH > 0 {
-		s.stagedPaneHeight = clampF(s.stagedPaneHeight, 60, max(listsH/2, 60))
+		s.stagedPaneHeight = clampF(s.stagedPaneHeight, 60, max(listsH-stagedPaneReserve, 60))
 	}
-	return min(s.stagedPaneHeight, float32(rows)*s.treeRowHeight()+6)
+	h := s.stagedPaneHeight
+	if !s.stagedPaneSized {
+		h = min(h, float32(rows)*s.treeRowHeight()+6)
+	}
+	s.stagedPaneShown = h
+	return h
 }
+
+// stagedPaneDefault is the Staged list's stored height before any drag.
+const stagedPaneDefault float32 = 220
+
+// stagedPaneReserve is what the Staged list leaves the rest of the column: the
+// Unstaged list's 60-point floor, the two section headers and the divider.
+const stagedPaneReserve float32 = 60 + 2*30 + splitHitWidth
 
 // clampF bounds a pane dimension.
 func clampF(v, lo, hi float32) float32 {

@@ -221,12 +221,11 @@ func (s *Shell) terminalDrawer(c *ui.Context, pageH float32) {
 	}
 	maxH := max(pageH-termMinAbove, termMinHeight)
 	height := clampF(d.height, termMinHeight, maxH)
-	handle := ui.Row(c).Height(8).FillWidth().Shrink(0).Cursor(ui.CursorResizeNS).
-		Label("Resize terminal").Center().Children(func() {
-		ui.Box(c).FillWidth().Height(1).Background(tokens.BorderSubtle)
-	})
-	if _, dy, held := handle.Dragged(); held {
-		d.height = clampF(height-dy, termMinHeight, maxH)
+	if drag := splitHandle(c, tokens, splitHorizontal, "Resize terminal"); drag.Reset {
+		d.height = clampF(termDefaultHeight, termMinHeight, maxH)
+		height = d.height
+	} else if drag.Held {
+		d.height = clampF(height-drag.DY, termMinHeight, maxH)
 		height = d.height
 	}
 	ui.Column(c).FillWidth().Height(height).Shrink(0).MinHeight(0).Children(func() {

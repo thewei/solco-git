@@ -13,7 +13,7 @@ const (
 	gitSplitDefaultTop      float32 = 420
 	gitFilePaneDefaultWidth float32 = 292
 	gitFilePaneMinWidth     float32 = 205
-	gitFileSplitterWidth    float32 = 6
+	gitFileSplitterWidth    float32 = splitHitWidth
 	// gitFilePaneCollapseBelow is the width of the center (the window less
 	// the sidebar) under which the file navigator closes by itself: open at
 	// its default width, it would leave the diff under ~450 px.
@@ -39,12 +39,10 @@ func (s *Shell) gitSplitReviewSurface(c *ui.Context) {
 			ui.Column(c).FillWidth().Height(upper).Shrink(0).MinHeight(0).Children(func() {
 				s.gitCommitHistoryPane(c)
 			})
-			handle := ui.Row(c).Height(8).FillWidth().Shrink(0).Cursor(ui.CursorResizeNS).
-				Label("Resize Git history and diff panes").Center().Children(func() {
-				ui.Box(c).FillWidth().Height(1).Background(s.tokens(t.Dark).BorderSubtle)
-			})
-			if _, dy, held := handle.Dragged(); held {
-				s.gitUpperHeight = clampF(upper+dy, gitSplitMinTop, maxTop)
+			if drag := splitHandle(c, s.tokens(t.Dark), splitHorizontal, "Resize Git history and diff panes"); drag.Reset {
+				s.gitUpperHeight = clampF(gitSplitDefaultTop, gitSplitMinTop, maxTop)
+			} else if drag.Held {
+				s.gitUpperHeight = clampF(upper+drag.DY, gitSplitMinTop, maxTop)
 			}
 			s.gitCommitReview(c)
 			return
@@ -136,12 +134,10 @@ func (s *Shell) gitFileNavigationColumn(c *ui.Context, body func()) {
 	}
 	width, maxWidth := s.gitFilePaneLimits(windowW)
 	ui.Column(c).Width(width).FillHeight().Shrink(0).MinHeight(0).Children(body)
-	handle := ui.Box(c).Width(gitFileSplitterWidth).Shrink(0).Cursor(ui.CursorResizeEW).
-		Label("Resize Git file navigator").Children(func() {
-		ui.Box(c).Width(1).FillHeight().Background(s.tokens(t.Dark).BorderSubtle)
-	})
-	if dx, _, held := handle.Dragged(); held {
-		s.gitFilePaneWidth = clampF(width+dx, gitFilePaneMinWidth, maxWidth)
+	if drag := splitHandle(c, s.tokens(t.Dark), splitVertical, "Resize Git file navigator"); drag.Reset {
+		s.gitFilePaneWidth = clampF(gitFilePaneDefaultWidth, gitFilePaneMinWidth, maxWidth)
+	} else if drag.Held {
+		s.gitFilePaneWidth = clampF(width+drag.DX, gitFilePaneMinWidth, maxWidth)
 	}
 }
 

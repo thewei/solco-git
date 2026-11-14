@@ -134,8 +134,13 @@ type Shell struct {
 	stagedSelected   int
 	stagedChoice     ui.Selection[string]
 	stagedPaneHeight float32
-	unstagedOpen     bool
-	stagedOpen       bool
+	// stagedPaneSized is true once the user has dragged the divider: from then
+	// the Staged list stands at that height, not at its rows'. stagedPaneShown
+	// is the height it was laid out at last frame, the base of the next drag.
+	stagedPaneSized bool
+	stagedPaneShown float32
+	unstagedOpen    bool
+	stagedOpen      bool
 
 	// The Changes center is split between commits/files and the Diff viewer.
 	gitUpperHeight       float32
@@ -224,7 +229,7 @@ func NewShell(w *Window, dir string) *Shell {
 	s.unstagedList.Selected = &s.unstagedSelected
 	s.stagedSelected = -1
 	s.stagedList.Selected = &s.stagedSelected
-	s.stagedPaneHeight = 220
+	s.stagedPaneHeight = stagedPaneDefault
 	s.sidebarW = sidebarWidth
 	s.gitUpperHeight = gitSplitDefaultTop
 	s.gitFilePaneWidth = gitFilePaneDefaultWidth

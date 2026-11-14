@@ -305,3 +305,62 @@ func formRowLead(c *ui.Context, lead func(), label, detail string, control func(
 		}
 	})
 }
+
+// splitAxis is the direction a split handle drags in.
+type splitAxis int
+
+const (
+	// splitHorizontal is a horizontal line between a region above and one
+	// below it; it drags up and down.
+	splitHorizontal splitAxis = iota
+	// splitVertical is a vertical line between two side-by-side regions; it
+	// drags left and right.
+	splitVertical
+)
+
+// splitHitWidth is a split handle's grab width (the line sits in its middle).
+const splitHitWidth float32 = 8
+
+// splitLineColor is a split handle's hairline: the border tone at rest, the
+// muted text tone while the pointer is over the handle or holds it.
+func splitLineColor(c *ui.Context, tokens DesignTokens, handle ui.Element) ui.Color {
+	if handle.Hovered() || handle.Pressed() {
+		return c.Theme().TextMuted
+	}
+	return tokens.BorderSubtle
+}
+
+// splitHandle is the one seam every resizable region of the app is dragged
+// by: a hairline in the middle of an 8-point grab strip, resize cursor, and the
+// line darkens to the muted text tone while the pointer is over it or holds it
+// (2026-11-14: the five seams had grown three different strips, two line
+// colours and no hover, so a user could not tell which edges move). It returns
+// the drag deltas of this frame and whether the handle is held; the caller owns
+// the size and its limits. A double click asks for the default size (Reset).
+func splitHandle(c *ui.Context, tokens DesignTokens, axis splitAxis, label string) splitDrag {
+	var strip ui.Element
+	if axis == splitHorizontal {
+		strip = ui.Row(c).Height(splitHitWidth).FillWidth().Cursor(ui.CursorResizeNS)
+	} else {
+		strip = ui.Column(c).Width(splitHitWidth).FillHeight().Cursor(ui.CursorResizeEW)
+	}
+	line := splitLineColor(c, tokens, strip)
+	strip.Shrink(0).Center().Label(label).Children(func() {
+		if axis == splitHorizontal {
+			ui.Box(c).FillWidth().Height(1).Background(line)
+		} else {
+			ui.Box(c).Width(1).FillHeight().Background(line)
+		}
+	})
+	dx, dy, held := strip.Dragged()
+	return splitDrag{DX: dx, DY: dy, Held: held, Reset: strip.DoubleClicked()}
+}
+
+// splitDrag is what a split handle reports for one frame.
+type splitDrag struct {
+	DX, DY float32
+	// Held is true while the handle is being dragged.
+	Held bool
+	// Reset is true on a double click: the region goes back to its default size.
+	Reset bool
+}

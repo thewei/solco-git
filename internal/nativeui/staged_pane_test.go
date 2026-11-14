@@ -78,3 +78,62 @@ func TestStagedPaneStaysAsTallAsItsRows(t *testing.T) {
 		}
 	}
 }
+
+// The divider follows the pointer from the first pixel and in both directions,
+// also when the Staged list's rows are fewer than its stored height (the case
+// where it used to move nothing: it started from a height the list never had).
+func TestPaneDividerFollowsThePointerBothWays(t *testing.T) {
+	root := stagedPaneFixture(t, 8, 3)
+	w, pump := newTestWindow(t)
+	sh := openAndLoad(t, w, pump, root)
+	tt := newTester(w, 1280, 800, true)
+	settle(tt, pump, 4)
+
+	for _, dy := range []float32{-90, -60, 150, 40} {
+		before, ok := tt.Find("Resize panes")
+		if !ok {
+			t.Fatalf("no divider: %q", tt.Texts())
+		}
+		y := before.Y + before.H/2
+		tt.Press(before.X+40, y)
+		tt.Move(before.X+40, y+dy/2)
+		tt.Move(before.X+40, y+dy)
+		tt.Release(before.X+40, y+dy)
+		settle(tt, pump, 4)
+		after, _ := tt.Find("Resize panes")
+		if got := after.Y - before.Y; got < dy-2 || got > dy+2 {
+			t.Errorf("a drag of %.0f moved the divider by %.0f", dy, got)
+		}
+	}
+	if !sh.stagedPaneSized {
+		t.Error("a dragged divider is remembered as the user's size")
+	}
+}
+
+// A double click on the divider gives the panes their default split back.
+func TestPaneDividerDoubleClickResets(t *testing.T) {
+	root := stagedPaneFixture(t, 8, 3)
+	w, pump := newTestWindow(t)
+	sh := openAndLoad(t, w, pump, root)
+	tt := newTester(w, 1280, 800, true)
+	settle(tt, pump, 4)
+
+	home, _ := tt.Find("Resize panes")
+	y := home.Y + home.H/2
+	tt.Press(home.X+40, y)
+	tt.Move(home.X+40, y-80)
+	tt.Release(home.X+40, y-80)
+	settle(tt, pump, 4)
+	moved, _ := tt.Find("Resize panes")
+	if moved.Y > home.Y-70 || !sh.stagedPaneSized {
+		t.Fatalf("the drag did not move the divider: %.0f → %.0f", home.Y, moved.Y)
+	}
+
+	tt.ClickAt(moved.X+40, moved.Y+moved.H/2)
+	tt.ClickAt(moved.X+40, moved.Y+moved.H/2)
+	settle(tt, pump, 4)
+	back, _ := tt.Find("Resize panes")
+	if back.Y != home.Y || sh.stagedPaneSized {
+		t.Errorf("a double click should restore the divider to y %.0f, it is at y %.0f (sized %v)", home.Y, back.Y, sh.stagedPaneSized)
+	}
+}

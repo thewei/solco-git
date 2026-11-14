@@ -180,11 +180,15 @@ func (w *Window) sidebarSlide(c *ui.Context, sh *Shell) {
 			// against the content column, never with sidebar material to its
 			// right.
 			handle := ui.Box(c).Width(sidebarResizeHit).Shrink(0).Cursor(ui.CursorResizeEW).
-				AlignItems(ui.End).Label("Resize sidebar").Children(func() {
-				ui.Box(c).Width(1).FillHeight().Background(tokens.BorderSubtle)
+				AlignItems(ui.End).Label("Resize sidebar")
+			handle.Children(func() {
+				ui.Box(c).Width(1).FillHeight().Background(splitLineColor(c, tokens, handle))
 			})
 			dx, _, held := handle.Dragged()
-			if held {
+			if handle.DoubleClicked() {
+				w.sidebarW = sidebarWidth
+				held = true // saved below like a drag's end
+			} else if held {
 				windowW, _ := c.Size()
 				minWidth, maxWidth := sidebarLimits(windowW)
 				w.sidebarW = clampF(w.sidebarW+dx, minWidth, maxWidth)

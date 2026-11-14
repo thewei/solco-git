@@ -60,7 +60,7 @@ UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差�
 - `files_markdown_test.go`：预览原生优先合同——每种文件的分级归属、Markdown 渲染⇄源码切换且不重读（Source 仍带对 HEAD 的槽边）、搜索命中落在 Source、链接只放行该放行的、图片只读仓库里且有像素预算、主题随外观只换一次、AVIF/ICO 整页只有几百字节且底色 = 窗口画布、设置里没有旧的 Rich file preview 开关；设置 SOLCOGIT_EVIDENCE 时落下 Markdown 渲染的 PNG；各条都做过变异检查。
 - `log_privacy_test.go`：日志合同——打开仓库、跑一次 Git 操作、收到一条被拒的链接后，默认级别的日志有操作名与工作区数，没有仓库路径/目录名/文件名/链接参数（抓取本身也被断言）。
 - `quick_commit_test.go`：空闲提交条上第一次点击 Commit 就打开提交对话框（按钮 KeepFocus；去掉则红：按下展开表单、按钮换了父级，松手落空）。
-- `staged_pane_test.go`：Staged 列表的高度——分隔条真的改它（旧的 Height 被 Grow 的 0% basis 吞掉，两个列表等分）、一个暂存文件不把 Unstaged 行挤到 Staged 头后面。
+- `staged_pane_test.go`：Staged 列表的高度——分隔条真的改它（旧的 Height 被 Grow 的 0% basis 吞掉，两个列表等分）、一个暂存文件不把 Unstaged 行挤到 Staged 头后面。分隔条逐像素跟手、上下都动（旧版从列表从未有过的存高度起拖，头一段拖动无效）、双击回默认；拖过之后 Staged 列表按用户高度站住，没拖时仍按行数封顶。五条拖拽缝（侧栏宽、Changes 两栏、历史/差异、文件导航、终端抽屉）共用 `ds_components.go` 的 `splitHandle`（8 pt 抓取带、居中发丝线、悬停/按住变 TextMuted、双击复位），不再各画各的。
 - `view_tabs_test.go`：侧栏三行视图的合同——Changes / Commits / Files 自上而下三行、整行宽、名称在 200/252/400 三种侧栏宽度下都画出；Changes 的三位数计数贴行尾且完整；选中是侧栏选中色的一层淡墨整行铺满、不是白纸（明暗两种外观），Files 树的 Changed | All 与搜索的 Files | Content 同样；点、方向键、悬停淡墨与提示（名称 + 计数 + ⌘1–3）。
 - `git_commit_graph_test.go`：路线图的合同——布局（线性、分叉/合并、车道收拢、多尖端与窗口外的父、分支线色沿线不变）、几何有界（槽宽不超上限、每行宽度随该行用到的车道）、画法（点与线真的画在车道上、车道之外是纸）、真实合并仓库经真实读取后画成两车道并渲染；变异（丢颜色传递、关掉收拢、合并标记）各自变红已核对。
 - `git_undo_test.go`：先问后动（确认前 HEAD 不动）、确认期间 HEAD 被动过则拒绝、没有可撤销时只给提示、Repository 菜单两项带 ⌥⌘Z 系加速键（不占 Edit 菜单的 ⌘Z）且各开对应确认。
