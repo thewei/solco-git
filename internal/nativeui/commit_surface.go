@@ -78,7 +78,15 @@ func (s *Shell) commitSurface(c *ui.Context) {
 					ui.Checkbox(c.Key("commit-noverify"), &noVerify, "")
 					ui.Text(c, "Skip hooks").FontSize(Typography().Caption).TextColor(t.TextMuted)
 					s.surface.commit.SignOff, s.surface.commit.NoVerify = signOff, noVerify
+					if s.surface.commit.Amend {
+						resetAuthor := s.surface.commit.ResetAuthor
+						ui.Checkbox(c.Key("commit-resetauthor"), &resetAuthor, "")
+						ui.Text(c, "Reset author").FontSize(Typography().Caption).TextColor(t.TextMuted)
+						s.surface.commit.ResetAuthor = resetAuthor
+					}
 				})
+				textField(c, &s.surface.commit.CoAuthors).Grow(0).Height(Controls().RegularHeight).
+					Placeholder("Co-authors: Name <email>; Name <email>").Label("Commit co-authors")
 
 				// Selected-file checklist (GWB-223 selection checklist).
 				ui.Column(c).FillWidth().Gap(sp.XXS).Children(func() {

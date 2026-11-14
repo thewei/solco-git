@@ -11,6 +11,9 @@ import (
 // footer totals are derived).
 type changesPanelState struct {
 	filter string
+	// hideUntracked leaves untracked files out of the list and the diff cards
+	// (a session choice: tracked changes only).
+	hideUntracked bool
 }
 
 // gdChangedTreeList renders one Godiff-style changed-file tree list over the

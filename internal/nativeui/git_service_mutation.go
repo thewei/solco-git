@@ -79,12 +79,14 @@ func (s *Shell) submitCommitAmend(subject, body string, selected []string, amend
 	s.surface.commit.InFlight = true
 	s.surface.commit.ErrText = ""
 	noVerify, signOff := s.surface.commit.NoVerify, s.surface.commit.SignOff
+	coAuthors := strings.Split(s.surface.commit.CoAuthors, ";")
+	resetAuthor := s.surface.commit.ResetAuthor && amend
 
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), gitworkbench.MutateTimeout)
 		defer cancel()
 		result, err := s.git.runner.Commit(ctx, root,
-			gitworkbench.CommitDraft{Subject: subject, Body: body, Paths: selected, Amend: amend, NoVerify: noVerify, SignOff: signOff}, *pre, snap)
+			gitworkbench.CommitDraft{Subject: subject, Body: body, Paths: selected, Amend: amend, NoVerify: noVerify, SignOff: signOff, CoAuthors: coAuthors, ResetAuthor: resetAuthor}, *pre, snap)
 		slog.Info("git commit finished", "op_class", "mutate", "op", "commit", "amend", amend, "ok", err == nil)
 
 		s.applyOnUI(func() {
@@ -98,6 +100,7 @@ func (s *Shell) submitCommitAmend(subject, body string, selected []string, amend
 			s.surface.commit.CommittedHash = result.Hash
 			s.surface.commit.Amend = false
 			s.surface.commit.AmendPrefilled = false
+			s.surface.commit.CoAuthors, s.surface.commit.ResetAuthor = "", false
 			s.git.preflight = nil
 			s.git.preflightSnap = nil
 			s.git.cache.Invalidate(root)

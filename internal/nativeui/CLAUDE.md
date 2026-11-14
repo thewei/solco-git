@@ -69,7 +69,12 @@ UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差�
 - `git_command_log_test.go`：丢弃后表里有写命令且默认不含读、Show reads 后读也出现、Copy All 旧到新每命令一行、Clear 只清本仓库、Repository 菜单有 Command Log…；SOLCOGIT_EVIDENCE 落 PNG。
 - `git_compare_commits_test.go`：⌘ 选两个不相邻的提交后右键首项是 Compare the Two Commits，审阅的是两者之间的差异（`DiffBase` 为 base..hash，c3/c4 之间的文件而非较新提交与其父之差），标题条写明方向，Back to Commit 退回单个提交；选一个或三个时没有这一项。
 - `git_rebase_from_test.go`：提交右键 Move Commits After This Onto → 选本地分支 → 先确认（确认前日志不动）→ 所点提交之后的提交落在目标分支上、该提交及之前离开当前分支。
-- `git_ignore_ui_test.go`：未跟踪文件的行菜单有 Add to .gitignore / Add to .git/info/exclude，选后写对应文件、文件从变更列表消失、本机排除不碰 .gitignore；已跟踪文件没有这两项。
+- `git_ignore_ui_test.go`：未跟踪文件的行菜单有 Add to .gitignore / Add to .git/info/exclude，选后写对应文件、文件从变更列表消失、本机排除不碰 .gitignore；已跟踪文件没有这两项。 Files 树里同样：只有未跟踪的文件才出这两项（`TestFilesTreeOffersIgnoreOnlyForUntrackedFiles`）。
+- `git_fixup_ui_test.go`：Rewrite History 的 Create Fixup Commit…（需暂存内容，没有则灰）与 Squash Fixups From Here…（确认后 fixup 提交折进目标，日志少了对应几条）。
+- `git_discard_all_test.go`：Actions 的 Discard All Unstaged Changes… 与 Delete All Untracked Files…（先确认；已暂存内容保留）。
+- `git_stash_modes_test.go`：Actions 的 Stash Staged Changes / Stash Changes, Keep Staged（无暂存则灰）。
+- `git_commit_authors_test.go`：提交面板的 Co-authors 字段（`;` 分隔，写成 trailer）与 Amend 时的 Reset author。
+- `git_hide_untracked_test.go`：Actions 的 Hide Untracked Files（会话级勾选）同时从列表和 diff 卡片里去掉未跟踪文件，再选一次恢复；全是未跟踪时中心给出 Show Untracked Files。
 - `git_reset_menu_test.go`：提交右键 Reset Current Branch to Here 的 Soft / Mixed / Hard 先确认（确认前 HEAD 不动）、再挪分支，工作区分别是已暂存 / 未跟踪 / 文件被删。
 - `git_history_ui_test.go`：先预览再改写（Drop / Squash / Fixup / Move / Reword / Amend / Cherry-pick N）、取消不动仓库、预览拒绝成 toast、已推送警告、冲突的改写被中止且仓库原样、改写可由 Undo 退回、⌘ / ⇧ 多选规则；SOLCOGIT_EVIDENCE 落 PNG。
 - `git_patch_ui_test.go`：选择规则（点选 / ⌘ / ⇧ / 整文件被行选收窄 / 换提交清空）、合并 / 他分支提交不可用、Remove / Split / Move / Undo 的结果与选择一致、改名文件的按行移除、冲突与对不上时仓库原样；每条规则做过变异检查。

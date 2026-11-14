@@ -68,8 +68,32 @@ func (s *Shell) filesRowMenu(m *ui.Menu, e filesview.Entry) {
 	if m.Item("Delete…").Chosen() {
 		s.filesDelete(e.Path, isDir)
 	}
+	if rel := s.untrackedRel(e.Path); rel != "" && !isDir {
+		s.ignoreMenuItems(m, rel)
+	}
 	m.Separator()
 	s.filesPathItems(m, e.Path, !e.IsDir && !e.TargetDir)
+}
+
+// untrackedRel is the repository-relative path of an absolute one when the
+// Git snapshot lists it as untracked, else "": a tracked or already ignored
+// file has nothing to add to an ignore file.
+func (s *Shell) untrackedRel(abs string) string {
+	snap := s.gitSnapshot()
+	if s.git == nil || snap == nil || s.git.root == "" {
+		return ""
+	}
+	rel, err := filepath.Rel(s.git.root, abs)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return ""
+	}
+	rel = filepath.ToSlash(rel)
+	for _, f := range snap.Files {
+		if f.Untracked && f.Path == rel {
+			return rel
+		}
+	}
+	return ""
 }
 
 // filesPathItems are the read-only helpers of one file or folder: Quick Look

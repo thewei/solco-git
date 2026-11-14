@@ -189,12 +189,17 @@ func (s *Shell) ignoreItems(m *ui.Menu, cf *gitworkbench.ChangeFile) {
 	if s.gdReviewingCommit() || !cf.Untracked {
 		return
 	}
+	s.ignoreMenuItems(m, cf.Path)
+}
+
+// ignoreMenuItems are the two entries for one repository-relative path.
+func (s *Shell) ignoreMenuItems(m *ui.Menu, rel string) {
 	m.Separator()
 	if m.Item("Add to .gitignore").Chosen() {
-		s.ignorePaths([]string{cf.Path}, gitworkbench.IgnoreInRepository)
+		s.ignorePaths([]string{rel}, gitworkbench.IgnoreInRepository)
 	}
 	if m.Item("Add to .git/info/exclude").Chosen() {
-		s.ignorePaths([]string{cf.Path}, gitworkbench.IgnoreLocally)
+		s.ignorePaths([]string{rel}, gitworkbench.IgnoreLocally)
 	}
 }
 
@@ -291,6 +296,20 @@ func (s *Shell) stashChanges() {
 			return "", err
 		}
 		return "Changes stashed", nil
+	})
+}
+
+// stashMode stashes the staged changes only, or everything while the staged
+// ones stay in place.
+func (s *Shell) stashMode(mode gitworkbench.StashMode) {
+	s.runGitOp("Stash", func(ctx context.Context, root string) (string, error) {
+		if err := s.git.runner.StashPushMode(ctx, root, mode, ""); err != nil {
+			return "", err
+		}
+		if mode == gitworkbench.StashStaged {
+			return "Staged changes stashed", nil
+		}
+		return "Changes stashed; the staged ones stay", nil
 	})
 }
 
@@ -676,6 +695,21 @@ func (s *Shell) runGitConfirm(kind, target string) {
 				return "", err
 			}
 			return "Rebased current branch onto " + target, nil
+		})
+	case "git-fixup":
+		s.runGitOp("Fixup Commit", func(ctx context.Context, root string) (string, error) {
+			if err := s.git.runner.CreateFixup(ctx, root, target); err != nil {
+				return "", err
+			}
+			return "Created a fixup! commit for " + shortHash(target), nil
+		})
+	case "git-squash-fixups":
+		s.runGitOp("Squash Fixups", func(ctx context.Context, root string) (string, error) {
+			n, err := s.git.runner.SquashFixups(ctx, root, target)
+			if err != nil {
+				return "", err
+			}
+			return "Folded " + itoa(n) + " fixup commit" + pluralS(n), nil
 		})
 	case "git-rebase-from":
 		branch, hash, _ := strings.Cut(target, "\x00")

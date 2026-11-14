@@ -46,6 +46,10 @@ type CommitSurfaceState struct {
 	// Signed-off-by trailer. Both apply to this one commit only.
 	NoVerify bool
 	SignOff  bool
+	// CoAuthors is "Name <email>" people separated by semicolons (Co-authored-by
+	// trailers); ResetAuthor, with Amend, makes the amended commit mine.
+	CoAuthors   string
+	ResetAuthor bool
 }
 
 // workspaceSurfaceState is the UI-independent primary-surface state machine

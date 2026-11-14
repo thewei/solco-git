@@ -187,7 +187,29 @@ func (s *Shell) commitRewriteMenu(m *ui.Menu, cm gitworkbench.CommitInfo) {
 		if sub.Item("Amend Staged Changes Into This Commit…").Disabled(busy || !s.onlyStagedChanges()).Chosen() {
 			s.openAmendInto(cm)
 		}
+		if sub.Item("Create Fixup Commit…").Disabled(busy || !s.hasStagedChanges()).Chosen() {
+			s.openConfirm("git-fixup", cm.Hash, "Create a Fixup Commit?",
+				"Commits the staged changes as “fixup! "+cm.Subject+"”. Squash Fixups From Here… folds it into that commit later.")
+		}
+		if sub.Item("Squash Fixups From Here…").Disabled(busy).Chosen() {
+			s.openConfirm("git-squash-fixups", cm.Hash, "Squash Fixup Commits?",
+				"Folds every “fixup!” commit from “"+cm.Subject+"” up into the commit it names and rewrites those commits. If anything conflicts, the rebase is cancelled and nothing changes. Undo (⌥⌘Z) takes it back. Requires a clean working tree.")
+		}
 	})
+}
+
+// hasStagedChanges reports whether the index holds anything.
+func (s *Shell) hasStagedChanges() bool {
+	snap := s.gitSnapshot()
+	if snap == nil {
+		return false
+	}
+	for _, f := range snap.Files {
+		if f.Staged {
+			return true
+		}
+	}
+	return false
 }
 
 // onlyStagedChanges is the amend-to precondition the list can see: something

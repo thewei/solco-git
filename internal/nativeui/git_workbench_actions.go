@@ -49,6 +49,27 @@ func (s *Shell) gitActionItems(m *ui.Menu) {
 	if m.Item("Unstage All").Disabled(!canUnstage).Chosen() {
 		s.unstageFiles(unstage)
 	}
+	if m.Item("Hide Untracked Files").Checked(s.changes.hideUntracked).Chosen() {
+		s.changes.hideUntracked = !s.changes.hideUntracked
+		s.changesTree = nil
+		s.git.gdRowsDirty = true
+	}
+	var unstaged, untracked []string
+	for _, f := range snap.Files {
+		switch {
+		case f.Untracked:
+			untracked = append(untracked, f.Path)
+		case f.Unstaged && f.Status != gitworkbench.StatusConflicted:
+			unstaged = append(unstaged, f.Path)
+		}
+	}
+	idle := s.git.opBusy || busySequencer
+	if m.Item("Discard All Unstaged Changes…").Disabled(idle || len(unstaged) == 0).Chosen() {
+		s.discardChanges(unstaged)
+	}
+	if m.Item("Delete All Untracked Files…").Disabled(idle || len(untracked) == 0).Chosen() {
+		s.discardChanges(untracked)
+	}
 	m.Separator()
 	canSync := !s.git.opBusy && !busySequencer && snap.Branch != ""
 	// The four rarer remote variants share one submenu; plain Fetch / Pull /
@@ -75,6 +96,12 @@ func (s *Shell) gitActionItems(m *ui.Menu) {
 	m.Separator()
 	if m.Item("Stash All Changes").Disabled(s.git.opBusy || busySequencer || len(snap.Files) == 0).Chosen() {
 		s.stashChanges()
+	}
+	if m.Item("Stash Staged Changes").Disabled(s.git.opBusy || busySequencer || !s.hasStagedChanges()).Chosen() {
+		s.stashMode(gitworkbench.StashStaged)
+	}
+	if m.Item("Stash Changes, Keep Staged").Disabled(s.git.opBusy || busySequencer || !s.hasStagedChanges() || len(snap.Files) == 0).Chosen() {
+		s.stashMode(gitworkbench.StashKeepIndex)
 	}
 	if m.Item("Save Stash…").Disabled(s.git.opBusy || busySequencer || len(snap.Files) == 0).Chosen() {
 		s.openSaveStashDialog()

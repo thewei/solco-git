@@ -78,6 +78,9 @@ func (s *Shell) gdDiffSurface(c *ui.Context) {
 	}
 	if len(s.git.gdRows) == 0 {
 		title, detail := "No matching files", strings.TrimSpace(s.changes.filter)
+		if detail == "" && s.changes.hideUntracked {
+			detail = "Untracked files are hidden"
+		}
 		if s.gdSearching() {
 			title, detail = "No matches in diffs", strings.TrimSpace(s.git.gdQuery)
 		}
@@ -91,6 +94,12 @@ func (s *Shell) gdDiffSurface(c *ui.Context) {
 			} else if strings.TrimSpace(s.changes.filter) != "" {
 				if compactButton(c, "Clear File Filter").Clicked() {
 					s.changes.filter = ""
+					s.git.gdRowsDirty = true
+				}
+			} else if s.changes.hideUntracked {
+				if compactButton(c, "Show Untracked Files").Clicked() {
+					s.changes.hideUntracked = false
+					s.changesTree = nil
 					s.git.gdRowsDirty = true
 				}
 			}

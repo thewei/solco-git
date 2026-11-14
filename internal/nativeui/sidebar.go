@@ -329,7 +329,9 @@ func (s *Shell) splitSections(snap *gitworkbench.ChangesSnapshot) (unstaged, sta
 		cf := snap.Files[i]
 		switch {
 		case cf.Untracked:
-			unstaged = append(unstaged, cf)
+			if !s.changes.hideUntracked {
+				unstaged = append(unstaged, cf)
+			}
 		default:
 			if cf.Unstaged {
 				unstaged = append(unstaged, cf)

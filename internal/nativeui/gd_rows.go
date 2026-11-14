@@ -70,6 +70,9 @@ func (s *Shell) gdFileVisible(i int) bool {
 // only changes were whitespace-only hunks, which git omits, have nothing.
 func (s *Shell) gdHasContent(f *gdFile) bool {
 	cf := f.cf
+	if s.changes.hideUntracked && cf.Untracked {
+		return false
+	}
 	return len(cf.Hunks) > 0 || cf.Binary || cf.TooLarge || cf.Deferred ||
 		cf.Status != gitworkbench.StatusModified || (cf.OldPath != "" && cf.OldPath != cf.Path)
 }

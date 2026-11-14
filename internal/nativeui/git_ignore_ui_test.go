@@ -77,3 +77,34 @@ func TestUntrackedRowOffersGitignoreAndExclude(t *testing.T) {
 		t.Errorf("a local exclude must not touch .gitignore: %q", data)
 	}
 }
+
+func TestFilesTreeOffersIgnoreOnlyForUntrackedFiles(t *testing.T) {
+	_, pump, sh, tt, root := previewShell(t, map[string][]byte{"scratch.log": []byte("noise\n")})
+	sh.git.cache.Invalidate(root)
+	sh.ensureGitSnapshot(true)
+	pump.until(t, "the untracked file in the snapshot", func() bool { return sh.untrackedRel(filepath.Join(root, "scratch.log")) != "" })
+	sh.refreshFiles()
+	settle(tt, pump, 4)
+
+	if err := tt.RightClick("README.md"); err != nil {
+		t.Fatalf("no tree row: %v (%q)", err, tt.Texts())
+	}
+	for _, item := range tt.Menu() {
+		if strings.HasPrefix(item, "Add to .") {
+			t.Fatalf("a tracked file offers %q", item)
+		}
+	}
+	tt.Key(0, ui.KeyEscape)
+	settle(tt, pump, 2)
+
+	if err := tt.RightClick("scratch.log"); err != nil {
+		t.Fatalf("no tree row: %v (%q)", err, tt.Texts())
+	}
+	if err := tt.ChooseMenuItem("Add to .git/info/exclude"); err != nil {
+		t.Fatalf("menu %q: %v", tt.Menu(), err)
+	}
+	framesUntil(t, tt, pump, "the exclude", func() bool {
+		data, _ := os.ReadFile(filepath.Join(root, ".git", "info", "exclude"))
+		return !sh.git.opBusy && strings.Contains(string(data), "/scratch.log\n")
+	})
+}
