@@ -56,7 +56,7 @@ The LazyGit-backed Git capabilities live in `solco-gitkit`'s nested `engine` mod
 
 `solco-gitkit` is public ([github.com/thewei/solco-gitkit](https://github.com/thewei/solco-gitkit), tagged `v0.1.0`), so CI here needs no credential.
 
-The UI kit (theme, components, icons, the Git review and Files presentation) started as a copy of Solco's `internal/nativeui`. `scripts/kit-parity.sh` lists, per shared file, whether the two copies are still identical (`--all`) or how far they differ, and `--diff <file.go>` shows one file; it needs the sibling `../solco` checkout (`SOLCO_DIR` when it is elsewhere).
+The UI kit (theme, components, icons, the Git review and Files presentation) started as a copy of Solco's `internal/nativeui`. `scripts/kit-parity.sh` lists, per shared file, whether the two copies are still identical (`--all`) or how far they differ, and `--diff <file.go>` shows one file; it needs the sibling `../solco` checkout (`SOLCO_DIR` when it is elsewhere). The 2026-11-14 menus (Rewrite History, the Actions additions, Co-authors / Reset author, Compare Two Commits) exist only here: Solco keeps just its Changes / Files lists, so the drift is deliberate and is not synced back.
 
 ## Opening a repository from outside
 
