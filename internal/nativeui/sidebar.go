@@ -232,6 +232,7 @@ func (s *Shell) commitsPane(c *ui.Context, pal *gdPalette) {
 			if m.Item("Interactive Rebase Onto Here…").Disabled(s.git.opBusy).Chosen() {
 				s.openRebaseSheet(cm.Hash, cm.Short)
 			}
+			s.rebaseFromMenu(m, cm)
 			s.commitRewriteMenu(m, cm)
 			m.Submenu("Reset Current Branch to Here", func(sub *ui.Menu) {
 				for _, mode := range []gitworkbench.ResetMode{gitworkbench.ResetSoft, gitworkbench.ResetMixed, gitworkbench.ResetHard} {

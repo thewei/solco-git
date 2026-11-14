@@ -362,6 +362,37 @@ func (s *Shell) confirmRebaseOnto(target string) {
 		"Replays the current branch's commits on top of "+target+" and rewrites them. If anything conflicts, the rebase is cancelled and nothing changes. Requires a clean working tree.")
 }
 
+// rebaseFromMenu is the three-argument rebase (`--onto target commit`): the
+// commits after this one move onto another local branch; this commit and
+// everything before it are left out of the branch.
+func (s *Shell) rebaseFromMenu(m *ui.Menu, cm gitworkbench.CommitInfo) {
+	cur := s.currentBranchName()
+	var targets []string
+	for _, b := range s.git.branches {
+		if !b.Current && b.Name != cur {
+			targets = append(targets, b.Name)
+		}
+	}
+	m.Submenu("Move Commits After This Onto", func(sub *ui.Menu) {
+		if len(targets) == 0 {
+			sub.Item("No other local branch").Disabled(true)
+		}
+		for _, name := range targets {
+			if sub.Item(name + "…").Disabled(s.git.opBusy).Chosen() {
+				s.confirmRebaseFrom(name, cm)
+			}
+		}
+	})
+}
+
+func (s *Shell) confirmRebaseFrom(target string, cm gitworkbench.CommitInfo) {
+	if s.git == nil || s.git.root == "" || s.git.opBusy || !gitworkbenchFullHash(cm.Hash) {
+		return
+	}
+	s.openConfirm("git-rebase-from", target+"\x00"+cm.Hash, "Move Commits Onto “"+target+"”?",
+		"Replays the commits after “"+cm.Subject+"” on top of "+target+" and rewrites them. That commit and everything before it are left out of this branch (Undo, ⌥⌘Z, brings them back). If anything conflicts, the rebase is cancelled and nothing changes. Requires a clean working tree.")
+}
+
 func (s *Shell) confirmCherryPickCommit(hash, subject string) {
 	if s.git == nil || s.git.root == "" || !gitworkbenchFullHash(hash) {
 		return
@@ -645,6 +676,14 @@ func (s *Shell) runGitConfirm(kind, target string) {
 				return "", err
 			}
 			return "Rebased current branch onto " + target, nil
+		})
+	case "git-rebase-from":
+		branch, hash, _ := strings.Cut(target, "\x00")
+		s.runGitOp("Rebase", func(ctx context.Context, root string) (string, error) {
+			if err := s.git.runner.RebaseOntoFrom(ctx, root, branch, hash); err != nil {
+				return "", err
+			}
+			return "Moved the commits after " + shortHash(hash) + " onto " + branch, nil
 		})
 	case "git-cherry-pick":
 		s.runGitOp("Cherry-pick Commit", func(ctx context.Context, root string) (string, error) {
