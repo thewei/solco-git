@@ -2,7 +2,7 @@ package nativeui
 
 /**
  * [INPUT]: 依赖 shell.go 的 Shell（一个仓库标签）、git_* 的快照/分支/同步动作、files 的树与搜索、window.go 的 Window（设置、标签）
- * [OUTPUT]: 对外提供一个标签的窗口外壳：viewTabs（Changes｜Commits｜Files 三行，直接铺在侧栏材质上：一行一个图形加名称，选中的是整行铺满的侧栏选中色，其余悬停时才有悬停色；Changes 的计数贴行尾，行下一条细线；仍是名为 View 的单选组，提示里有 ⌘1/⌘2/⌘3）、repoHead（仓库名 + 搜索 + 刷新）、sidebarColumn（侧栏正文）、sidebarFoot（工作区芯片 + Settings，同 Solco 页脚）、titleTools（标题带右侧：文件栏开关/Split·Unified、Fetch/Pull/Push、Actions）、branchChip + branchSwitcherPanel（分支下拉）、stage（中央：Changes/Commits 评审面或 Files 页）、fetchTip/fetchedAgo/checkFetchedAt（Fetch 钮提示里的"上次抓取"，原来页脚那句 Fetched … ago 搬到这里）
+ * [OUTPUT]: 对外提供一个标签的窗口外壳：viewTabs（Changes｜Commits｜Files 三行，直接铺在侧栏材质上：一行一个图形加名称，选中的是整行铺满的侧栏选中色，其余悬停时才有悬停色；Changes 的计数贴行尾，行下一条细线；仍是名为 View 的单选组，提示里有 ⌘1/⌘2/⌘3）、sidebarTools / sidebarSearchField（搜索与刷新的目标；搜索打开时侧栏顶上才有输入框）、sidebarColumn（侧栏正文）、sidebarFoot（工作区芯片 + Settings，同 Solco 页脚）、titleTools（标题带右侧：文件栏开关/Split·Unified、Fetch/Pull/Push、Actions）、branchChip + branchSwitcherPanel（分支下拉）、stage（中央：Changes/Commits 评审面或 Files 页）、fetchTip/fetchedAgo/checkFetchedAt（Fetch 钮提示里的"上次抓取"，原来页脚那句 Fetched … ago 搬到这里）
  * [POS]: Solco Git 的版面落点：把复制来的 Git 评审面与 Files 页装进设计稿的三栏（侧栏｜标题带｜舞台）；侧栏顶是三个视图，不再有 Solco 那样的 Terminal/Sessions/Hosts 标签
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -92,57 +92,41 @@ func (s *Shell) viewTabs(c *ui.Context) {
 	})
 }
 
-// repoHead is the sidebar's head: the repository's name (its folder in the
-// tooltip), the search that filters what the sidebar lists, and Refresh.
-func (s *Shell) repoHead(c *ui.Context) {
-	t := c.Theme()
-	k := gorexColorsOf(t.Dark)
-	files := s.currentView() == viewFiles
-	search := &headerSearch{
-		Query: &s.gitRefsFilter, Open: &s.gitRefsSearchOpen, Label: "Filter Git references", Button: "Search references",
-		Changed: s.gitRefsFilterChanged,
-	}
-	refreshLabel, refresh := "Refresh repository", s.refreshGitChanges
-	if files {
-		search = &headerSearch{
+// sidebarTools is what the band's two buttons beside the sidebar toggle work
+// on: the search that filters what the sidebar lists (the references tree, or
+// the file tree in Files) and the Refresh of the same thing.
+func (s *Shell) sidebarTools() (search *headerSearch, refreshLabel string, refresh func()) {
+	if s.currentView() == viewFiles {
+		return &headerSearch{
 			Query: &s.filesSearch.query, Open: &s.filesSearch.open, Label: "Search files", Button: "Search files",
 			Changed: s.filesSearchChanged, Submit: s.filesSearchOpenFirst,
-		}
-		refreshLabel, refresh = "Refresh files", s.refreshFiles
+		}, "Refresh files", s.refreshFiles
 	}
-	ui.Column(c).FillWidth().Children(func() {
-		ui.Row(c).FillWidth().Padding(6, sidebarGutter, 4).Gap(2).AlignItems(ui.Center).Children(func() {
-			name := s.repoName()
-			title := ui.Text(c, name).FontSize(Typography().Body).FontWeight(WeightSemibold).SingleLine().
-				Ellipsis("…").Shrink(1).MinWidth(0).Grow(1)
-			tipped(c, title, tildePath(s.dir))
-			search.button(c, k)
-			if gorexIconButton(c, k, iconRefresh, refreshLabel, refreshLabel, false, gorexPaneBtn, gorexPaneGlyph).Clicked() {
-				refresh()
-			}
-		})
-		if *search.Open {
-			ui.Row(c).FillWidth().Padding(0, sidebarGutter, 6).Children(func() { search.field(c) })
-		}
-	})
+	return &headerSearch{
+		Query: &s.gitRefsFilter, Open: &s.gitRefsSearchOpen, Label: "Filter Git references", Button: "Search references",
+		Changed: s.gitRefsFilterChanged,
+	}, "Refresh repository", s.refreshGitChanges
 }
 
-// repoName is the folder name the workspace chip and the sidebar head show.
-func (s *Shell) repoName() string {
-	if name := s.gitRepoName(); name != "" {
-		return name
+// sidebarSearchField is the sidebar's head: nothing until the search in the
+// band is opened, then its field with the rule under it. The repository's name
+// is not repeated here — the foot's workspace chip says it (2026-11-14).
+func (s *Shell) sidebarSearchField(c *ui.Context) {
+	search, _, _ := s.sidebarTools()
+	if !*search.Open {
+		return
 	}
-	return pathBase(s.dir)
+	ui.Row(c).FillWidth().Padding(6, sidebarGutter).Children(func() { search.field(c) })
+	ui.Divider(c)
 }
 
 // sidebarColumn is the sidebar below the traffic-light band: the three views,
-// the repository head, the references tree (Changes, Commits) or the file
+// the search field when opened, the references tree (Changes, Commits) or the file
 // tree (Files), and the foot.
 func (s *Shell) sidebarColumn(c *ui.Context) {
 	ui.Column(c).Width(s.sidebarW).Grow(1).MinHeight(0).Shrink(0).Children(func() {
 		s.viewTabs(c)
-		s.repoHead(c)
-		ui.Divider(c)
+		s.sidebarSearchField(c)
 		// Each body keeps its own identity: the refs tree and the file tree
 		// are different lists, and sharing a slot let rows of the one linger
 		// under the other.

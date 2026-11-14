@@ -92,11 +92,15 @@ func stripRects(t *testing.T, tt *ui.Tester) (rects [len(sidebarViews)]ui.Rect, 
 func stripTexts(t *testing.T, tt *ui.Tester, repo string) []string {
 	t.Helper()
 	all := tt.Texts()
-	start, end := slices.Index(all, "View"), slices.Index(all, repo)
+	// The strip ends with the last view's name (each is listed twice: the row
+	// and its text); the repository's name no longer follows it in the sidebar.
+	last := sidebarViews[len(sidebarViews)-1].label
+	start := slices.Index(all, "View")
+	end := slices.Index(all, last)
 	if start < 0 || end < start {
-		t.Fatalf("no tab strip before %q in %q", repo, all)
+		t.Fatalf("no tab strip in %q", all)
 	}
-	return all[start+1 : end]
+	return all[start+1 : end+2]
 }
 
 func occurrences(texts []string, s string) int {

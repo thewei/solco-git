@@ -279,8 +279,8 @@ func TestHistoryButtonsHoldTheSidebarEdgeThenSettleBesideTheToggle(t *testing.T)
 	toggle, _ = tt.Find("Show Sidebar")
 	back, _ = tt.Find("Back")
 	forward, _ = tt.Find("Forward")
-	if !near(back.X, toggle.X+toggle.W+sidebarNavGap) {
-		t.Errorf("shut sidebar: Back at %.1f, want beside the toggle at %.1f", back.X, toggle.X+toggle.W+sidebarNavGap)
+	if want := toggle.X + sidebarLeftGroupWidth() + sidebarNavGap; !near(back.X, want) {
+		t.Errorf("shut sidebar: Back at %.1f, want beside the toggle, search and Refresh at %.1f", back.X, want)
 	}
 	chip, ok := tt.Find("Workspace: gamma")
 	if !ok {

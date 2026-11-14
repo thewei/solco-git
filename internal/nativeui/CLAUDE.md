@@ -9,7 +9,7 @@ Solco Git 的全部呈现层；每个文件开头的 L3 头（`[INPUT]/[OUTPUT]/
 - `window.go`：Window 状态机——工作区清单（同一仓库根只有一个）、移除确认（`removeAsk`）、偏好与最近列表、待处理链接队列、设置落盘与广播；每一种打开方式（⌘O、Quick Launch、拖放、`solcogit://` 链接、`open -a`、Recent、worktree）都收敛到 `OpenRepository`：新的就加入清单，并显示。
 - `window_workspaces.go`：工作区清单的视图——侧栏页脚的工作区芯片（Solco 页脚设备芯片的样子，始终是当前工作区；点开向上弹出带搜索、有最大高度、超出滚动的列表，↵ 切换并刷新；侧栏收起时同一个下拉改在标题带里，两颗芯片只有一颗画下拉）、`workspaceLabels`（同名加父目录）、设置里的工作区管理（↑↓ 排序、移除、Add Workspace…）、移除有草稿或在跑操作的工作区前的确认。
 - `window_nav.go`：Back / Forward——（工作区，视图）位置的历史栈（`navHistory`，每帧由 `Window.View` 记录，所以每条导航路径都进历史；上限 64、移除工作区时折掉它的位置、不落盘），侧栏带右缘的 Back/Forward 一对（Solco 同位同形，无处可去时是禁用脸；侧栏收起后落在侧栏钮旁）与 View 菜单的 ⌘[ / ⌘]；Commit 编辑器未收起时和其他导航一样被拦住。
-- `window_view.go`：窗口的单一帧入口：标题带（分支 + 工具；侧栏收起时才多出工作区下拉）+ 活动工作区的工作台；侧栏宽度属于窗口；侧栏钮与 Back/Forward 两组悬浮钮。
+- `window_view.go`：窗口的单一帧入口：标题带（分支 + 工具；侧栏收起时才多出工作区下拉）+ 活动工作区的工作台；侧栏宽度属于窗口；侧栏钮（连同搜索、刷新）与 Back/Forward 两组悬浮钮；侧栏最窄不小于带里五颗钮所需（`sidebarChromeMin`，经 `sidebarLimits(windowW, bar)`）。
 - `window_menu.go`：菜单栏（File / Repository / View / Window）的单一来源，只调已有方法；⌃⇥ / ⌃⇧⇥ 是 Window 菜单的可见项（AppKit 不把 Control-Tab 交给视图，Hidden 项的键位也不触发）。
 - `window_dialogs.go`：不属于任何仓库的浮层（设置、移除工作区确认）；设置页的分组顺序是 Workspaces、Appearance、Editor、Language servers、Terminal、Window、Git（编辑相关的紧跟 Appearance，落在对话框第一屏）。
 - `welcome.go`：零工作区页：复用资源包嵌入的应用图标，显示 Open Repository…（⌘O）、最近列表与拖入提示。
@@ -19,7 +19,7 @@ Solco Git 的全部呈现层；每个文件开头的 L3 头（`[INPUT]/[OUTPUT]/
 - `external_open.go`：`solcogit://open?repo=&view=&file=` 与 `open -a` 的唯一入口（解析、校验、不记日志）。
 - `shortcuts.go`：键位单一来源——菜单里列出的键就是绑定的键（⌘B 是唯一的窗口内快捷键，其余都是菜单加速键）。
 - `shell.go` / `shell_tab.go`：一个工作区 = 一个 Shell（Git + Files 所需的那部分状态）及其作为窗口成员的生命周期接缝；`view.go` 是工作区内的三个视图（Changes / Commits / Files），没有页面栈。
-- `frame.go`：三栏版面（侧栏｜标题带｜舞台）落点，侧栏主体按视图加 key；`viewTabs` 是直接铺在侧栏材质上的三行视图开关（2026-11-12 起，原页签条已退役）：一行一个图形加名称，选中的是整行铺满的侧栏选中色（`materialNavGroup` / `materialNavRow`，行高与圆角同树行），Changes 的计数贴行尾，行下一条细线，仍是名为 View 的单选组；侧栏页脚 `sidebarFoot` = 工作区芯片 + Settings（原来的 "Fetched … ago" 搬进 Fetch 钮的提示 `fetchTip`）。
+- `frame.go`：三栏版面（侧栏｜标题带｜舞台）落点，侧栏主体按视图加 key；`viewTabs` 是直接铺在侧栏材质上的三行视图开关（2026-11-12 起，原页签条已退役）：一行一个图形加名称，选中的是整行铺满的侧栏选中色（`materialNavGroup` / `materialNavRow`，行高与圆角同树行），Changes 的计数贴行尾，行下一条细线，仍是名为 View 的单选组；侧栏不再有“仓库名 + 搜索 + 刷新”一行（2026-11-14）：搜索与刷新是标题带里侧栏开关右边的两颗按钮（`Window.sidebarSearchRefresh`，目标由 `Shell.sidebarTools` 按视图给：引用树或文件树；收起时点搜索先展开侧栏），搜索打开时 `sidebarSearchField` 才在视图行下画输入框；侧栏页脚 `sidebarFoot` = 工作区芯片 + Settings（原来的 "Fetched … ago" 搬进 Fetch 钮的提示 `fetchTip`）。
 - `boundary.go`：从 Solco 复制来的代码原本跨出去调用的几个小边界，在这里用本应用的语义落地。
 
 Git（复制自 Solco，随 `solco-gitkit` 演进）
@@ -63,6 +63,7 @@ UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差�
 - `staged_pane_test.go`：Staged 列表的高度——分隔条真的改它（旧的 Height 被 Grow 的 0% basis 吞掉，两个列表等分）、一个暂存文件不把 Unstaged 行挤到 Staged 头后面。分隔条逐像素跟手、上下都动（旧版从列表从未有过的存高度起拖，头一段拖动无效）、双击回默认；拖过之后 Staged 列表按用户高度站住，没拖时仍按行数封顶。五条拖拽缝（侧栏宽、Changes 两栏、历史/差异、文件导航、终端抽屉）共用 `ds_components.go` 的 `splitHandle`（8 pt 抓取带、居中发丝线、悬停/按住变 TextMuted、双击复位），不再各画各的。
 - `zero_stats_test.go`：零不上屏——`gdStatText`（+/- 统计只写非零的一侧）、分区标题的零计数不画、整屏没有恰好是 "0" / "-0" 的文字；`countBadge` / `neutralCountBadge`（`ds_components.go`）是所有数字角标的唯一药丸（分区计数、领先/落后、“+N”折叠与隐藏提交）。
 - `pane_sizes.go`：拖拽缝的尺寸记忆（`loadPaneSizes` 新工作区带上次尺寸、`splitFinished` 一次拖拽或双击复位结束的瞬间、`savePaneSizes` 四个尺寸一次写回 `window.panes`，未动过的存 0）；`pane_sizes_test.go`：拖完才写（途中不写）、下一个窗口按存值站、双击清掉、越界被夹住，短历史得短提交列表（用户拖过则保持其高度）。
+- `band_tools_test.go`：搜索与刷新在侧栏开关右边、Back 在其后；侧栏里没有仓库名一行；收起时点搜索先展开侧栏；最窄侧栏装得下带里的按钮。
 - `view_tabs_test.go`：侧栏三行视图的合同——Changes / Commits / Files 自上而下三行、整行宽、名称在 200/252/400 三种侧栏宽度下都画出；Changes 的三位数计数贴行尾且完整；选中是侧栏选中色的一层淡墨整行铺满、不是白纸（明暗两种外观），Files 树的 Changed | All 与搜索的 Files | Content 同样；点、方向键、悬停淡墨与提示（名称 + 计数 + ⌘1–3）。
 - `git_commit_graph_test.go`：路线图的合同——布局（线性、分叉/合并、车道收拢、多尖端与窗口外的父、分支线色沿线不变）、几何有界（槽宽不超上限、每行宽度随该行用到的车道）、画法（点与线真的画在车道上、车道之外是纸）、真实合并仓库经真实读取后画成两车道并渲染；变异（丢颜色传递、关掉收拢、合并标记）各自变红已核对。
 - `git_undo_test.go`：先问后动（确认前 HEAD 不动）、确认期间 HEAD 被动过则拒绝、没有可撤销时只给提示、Repository 菜单两项带 ⌥⌘Z 系加速键（不占 Edit 菜单的 ⌘Z）且各开对应确认。

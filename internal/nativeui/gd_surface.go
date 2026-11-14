@@ -238,7 +238,7 @@ func (s *Shell) gdDiffRow(c *ui.Context, pal *gdPalette, i int) {
 		ui.Column(c).Children(func() {
 			if !f.collapsed || s.gdForceOpen(int(r.file)) {
 				ui.Box(c).Height(4).Background(pal.codeBg).
-					BorderWidth(0, 1, 1, 1).BorderColor(pal.cardBorder).Radius(0, 0, gdCardRadius, gdCardRadius)
+					BorderWidth(0, 1, 1, 1).BorderColor(pal.cardBorder).Radius(0, 0, cardRadius(), cardRadius())
 			}
 			ui.Box(c).Height(gdCardGap).Background(s.tokens(c.Theme().Dark).Content)
 		})
@@ -356,9 +356,9 @@ func (s *Shell) gdFileHeader(c *ui.Context, pal *gdPalette, idx int, f *gdFile) 
 		h = ui.Row(c).Height(46).Padding(0, 8, 0, 6).Gap(8).Background(pal.headerBg).Border(1, pal.cardBorder)
 	})
 	if collapsed {
-		h.Radius(gdCardRadius)
+		h.Radius(cardRadius())
 	} else {
-		h.Radius(gdCardRadius, gdCardRadius, 0, 0)
+		h.Radius(cardRadius(), cardRadius(), 0, 0)
 	}
 	if idx == s.git.gdCurrent && s.git.gdList.FocusWithin(c) {
 		h.Border(1, t.Accent.Alpha(0.6))
@@ -506,7 +506,9 @@ func (s *Shell) gdFileHeader(c *ui.Context, pal *gdPalette, idx int, f *gdFile) 
 	})
 }
 
-// gdViewedButton marks a file viewed, which collapses it. It always says so in
+// gdViewedButton marks a file viewed, which collapses it. Unframed like the
+// header's other buttons (a toggle that is on wears a quiet wash of its colour).
+// It always says so in
 // words: a bare box in a header reads as a stage checkbox, and the narrow
 // card (no room for the word) leaves Viewed to the header's context menu
 // instead of drawing one (2026-11-08: a boxed Viewed collapsed a card where
@@ -514,8 +516,7 @@ func (s *Shell) gdFileHeader(c *ui.Context, pal *gdPalette, idx int, f *gdFile) 
 func (s *Shell) gdViewedButton(c *ui.Context, pal *gdPalette, f *gdFile, viewed bool) {
 	t := c.Theme()
 	on := viewed
-	b := ui.CheckboxBase(c, &on).Gap(7).Height(Controls().RegularHeight).Padding(0, 11).Radius(Radius().Pill).Shrink(0).
-		Border(1, ui.RGBA(127, 127, 127, 0.22)).Label("Viewed")
+	b := ui.CheckboxBase(c, &on).Gap(7).Height(Controls().RegularHeight).Padding(0, 10).Radius(Radius().Row).Shrink(0).Label("Viewed")
 	if b.Changed() {
 		s.gdSetViewed(f, on)
 	}
@@ -523,7 +524,7 @@ func (s *Shell) gdViewedButton(c *ui.Context, pal *gdPalette, f *gdFile, viewed 
 		b.Background(pal.hover)
 	}
 	if viewed {
-		b.Border(1, pal.viewed.Alpha(0.44)).TextColor(pal.viewed)
+		b.Background(pal.viewed.Alpha(0.12)).TextColor(pal.viewed)
 	}
 	b.Children(func() {
 		box := ui.Box(c).Size(15, 15).Radius(iconButtonRadius(15)).Center()

@@ -135,16 +135,17 @@ func (w *Window) navMove(delta int) {
 // group and between them while the sidebar is shut.
 const sidebarNavGap float32 = 4
 
-// sidebarLeftGroupWidth is the left group's width: the sidebar toggle.
-func sidebarLeftGroupWidth() float32 { return gorexIconBtn }
+// sidebarLeftGroupWidth is the left group's width: the sidebar toggle with the
+// sidebar's search and Refresh beside it.
+func sidebarLeftGroupWidth() float32 { return 3*gorexIconBtn + 2*sidebarNavGap }
 
 // sidebarRightGroupWidth is the history pair holding the sidebar band's right
 // edge, as Solco's Back and Forward do.
 func sidebarRightGroupWidth() float32 { return 2*gorexIconBtn + sidebarNavGap }
 
 // sidebarChromeStripWidth is the widest the floating chrome gets: with the
-// sidebar shut the pair settles beside the toggle, and the content clears all
-// three buttons.
+// sidebar shut the pair settles beside the left group, and the content clears
+// all five buttons.
 func sidebarChromeStripWidth() float32 {
 	return sidebarLeftGroupWidth() + sidebarNavGap + sidebarRightGroupWidth()
 }

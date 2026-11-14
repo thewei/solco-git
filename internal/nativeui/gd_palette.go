@@ -163,8 +163,10 @@ func gdPaletteFor(t *ui.Theme) *gdPalette {
 	return &gdLightPalette
 }
 
-// gdCardRadius rounds the corners of the files' cards.
-const gdCardRadius = 10
+// cardRadius rounds every card — the diff's file cards, Settings' groups, the
+// welcome list: the row radius, one step under the design scale's Card (10),
+// which read too round on a card this wide (2026-11-14).
+func cardRadius() float32 { return Radius().Row }
 
 // gdStatusLetterColor is the color of a file's status letter in the tree.
 func gdStatusLetterColor(status gitworkbench.ChangeStatus, pal *gdPalette, t *ui.Theme) ui.Color {

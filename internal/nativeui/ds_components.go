@@ -262,7 +262,7 @@ func settingsGroup(c *ui.Context, title string, rows ...settingsRow) ui.Element 
 		if title != "" {
 			groupLabel(c, title)
 		}
-		ui.Column(c).FillWidth().Radius(Radius().Card).Background(tokens.Panel).
+		ui.Column(c).FillWidth().Radius(cardRadius()).Background(tokens.Panel).
 			Border(1, tokens.BorderSubtle).Clip().Children(func() {
 			for i, r := range rows {
 				if i > 0 && !r.attached {

@@ -8,6 +8,7 @@ package nativeui
  */
 
 import (
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -35,15 +36,23 @@ const (
 
 // sidebarLimits bounds the sidebar's width in a window this wide. The
 // maximum never drops below the minimum.
-func sidebarLimits(windowW float32) (minWidth, maxWidth float32) {
+func sidebarLimits(windowW float32, bar ui.TitleBar) (minWidth, maxWidth float32) {
+	minWidth = max(sidebarMinWidth, sidebarChromeMin(bar))
 	maxWidth = sidebarMaxWidth
 	if room := windowW - sidebarCenterFloor; maxWidth > room {
 		maxWidth = room
 	}
-	if maxWidth < sidebarMinWidth {
-		maxWidth = sidebarMinWidth
+	if maxWidth < minWidth {
+		maxWidth = minWidth
 	}
-	return sidebarMinWidth, maxWidth
+	return minWidth, maxWidth
+}
+
+// sidebarChromeMin is the narrowest sidebar whose band holds the floating
+// chrome: the traffic lights, the toggle with search and Refresh, then Back and
+// Forward before the resize handle (they hold the band's right edge).
+func sidebarChromeMin(bar ui.TitleBar) float32 {
+	return sidebarToggleX(bar) + sidebarLeftGroupWidth() + sidebarNavGap + sidebarRightGroupWidth() + 12 + sidebarResizeHit
 }
 
 // slideWidth drives one panel host's animated width. The host element must
@@ -156,6 +165,9 @@ func (w *Window) toggleSidebar() {
 // opaque sidebar token. The trailing edge is a drag handle that re-widths the
 // sidebar between sidebarLimits, remembered across runs.
 func (w *Window) sidebarSlide(c *ui.Context, sh *Shell) {
+	if floor, _ := sidebarLimits(0, c.TitleBar()); w.sidebarW < floor {
+		w.sidebarW = floor // the band's buttons need this much
+	}
 	full := w.sidebarW + sidebarResizeHit
 	host := ui.Row(c.Key("sidebar-slide")).Shrink(0).AlignItems(ui.Stretch)
 	width := slideWidth(host, "width", w.sidebarCollapsed, full, w.sidebarWDragging)
@@ -190,7 +202,7 @@ func (w *Window) sidebarSlide(c *ui.Context, sh *Shell) {
 				held = true // saved below like a drag's end
 			} else if held {
 				windowW, _ := c.Size()
-				minWidth, maxWidth := sidebarLimits(windowW)
+				minWidth, maxWidth := sidebarLimits(windowW, c.TitleBar())
 				w.sidebarW = clampF(w.sidebarW+dx, minWidth, maxWidth)
 			}
 			// Read one frame late by design: the handle builds after the
@@ -226,12 +238,13 @@ func (w *Window) sidebarToggle(c *ui.Context) {
 		label = "Hide Sidebar"
 	}
 	y := (max(bar.Height, 38) - gorexIconBtn) / 2
-	ui.Row(c).Absolute().Left(sidebarToggleX(bar)).Top(y).AlignItems(ui.Center).Children(func() {
+	ui.Row(c).Absolute().Left(sidebarToggleX(bar)).Top(y).Gap(sidebarNavGap).AlignItems(ui.Center).Children(func() {
 		toggle := gorexIconButton(c, k, iconPanel, label, "", false, gorexIconBtn, gorexIconGlyph)
 		tipped(c, toggle, label, tipKeys(sidebarToggleBinding.keycaps()))
 		if toggle.Clicked() {
 			w.toggleSidebar()
 		}
+		w.sidebarSearchRefresh(c, k)
 	})
 	right := sidebarToggleX(bar) + sidebarLeftGroupWidth() + sidebarNavGap
 	if edge := w.sidebarSlideW - sidebarResizeHit - 12 - sidebarRightGroupWidth(); edge > right {
@@ -240,6 +253,35 @@ func (w *Window) sidebarToggle(c *ui.Context) {
 	ui.Row(c).Absolute().Left(right).Top(y).Gap(sidebarNavGap).AlignItems(ui.Center).Children(func() {
 		w.historyButtons(c, k)
 	})
+}
+
+// sidebarSearchRefresh is the two buttons beside the sidebar toggle: search
+// and Refresh of what the sidebar lists (the references, or the files). Search
+// opens the sidebar first when it is shut, since its field lives there.
+func (w *Window) sidebarSearchRefresh(c *ui.Context, k *gorexColors) {
+	sh := w.activeShell()
+	if sh == nil {
+		return
+	}
+	search, refreshLabel, refresh := sh.sidebarTools()
+	label := search.Button
+	if *search.Open {
+		label = "Close " + strings.ToLower(label)
+	}
+	if gorexIconButton(c, k, iconSearch, label, label, *search.Open, gorexIconBtn, gorexIconGlyph).Clicked() {
+		switch {
+		case *search.Open:
+			search.close()
+		case w.sidebarCollapsed:
+			w.toggleSidebar()
+			*search.Open = true
+		default:
+			*search.Open = true
+		}
+	}
+	if gorexIconButton(c, k, iconRefresh, refreshLabel, refreshLabel, false, gorexIconBtn, gorexIconGlyph).Clicked() {
+		refresh()
+	}
 }
 
 // titleBand is the content column's top band: the workspace pull-down and the

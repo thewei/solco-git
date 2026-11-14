@@ -307,7 +307,7 @@ func (w *Window) workspacesGroup(c *ui.Context) {
 	}
 	ui.Column(c).FillWidth().Gap(sp.S).Children(func() {
 		groupLabel(c, "Workspaces")
-		ui.Column(c).FillWidth().Radius(Radius().Card).Background(tokens.Panel).
+		ui.Column(c).FillWidth().Radius(cardRadius()).Background(tokens.Panel).
 			Border(1, tokens.BorderSubtle).Clip().Children(func() {
 			if len(w.workspaces) > 0 {
 				ui.Scroll(c).FillWidth().MaxHeight(workspaceListMaxHeight).Children(func() {

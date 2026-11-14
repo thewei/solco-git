@@ -71,7 +71,7 @@ func (w *Window) recentCard(c *ui.Context) {
 	t := c.Theme()
 	tokens := designTokens(t.Dark)
 	ui.Box(c).Height(22).Shrink(0).PassThrough()
-	ui.Column(c).FillWidth().Radius(Radius().Card).Background(tokens.Panel).Border(1, tokens.BorderSubtle).Clip().Children(func() {
+	ui.Column(c).FillWidth().Radius(cardRadius()).Background(tokens.Panel).Border(1, tokens.BorderSubtle).Clip().Children(func() {
 		ui.Text(c, "Recent").FontSize(Typography().BodySmall).FontWeight(WeightMedium).TextColor(t.TextMuted).
 			Padding(8, 14).FillWidth()
 		for _, root := range recent {
