@@ -10,6 +10,7 @@ package nativeui
 import (
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // arrive aligns the workspace's Git context when it comes to the front: the root is
@@ -60,6 +61,14 @@ func (s *Shell) locateFile(file string) {
 		s.filesGit.changedOnly = false // the row must be in the tree
 		s.filesSearch.query = ""
 		st.located, st.locateScroll = abs, abs
+		st.locateFlash = abs
+		time.AfterFunc(gitFlashFor, func() {
+			s.applyOnUI(func() {
+				if st.locateFlash == abs {
+					st.locateFlash = ""
+				}
+			})
+		})
 	})
 }
 

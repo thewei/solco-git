@@ -54,6 +54,9 @@ func (w *Window) settingsSheet(c *ui.Context) {
 							}
 						}),
 					)
+					w.editorGroup(c, cfg)
+					w.languageServersGroup(c)
+					w.terminalGroup(c, cfg)
 					settingsGroup(c, "Window",
 						row("Restore window and workspaces", "Reopens your workspaces, on the one you left, at the same place on screen.", func() {
 							if on, changed := settingSwitch(c, "Restore window and workspaces", cfg.General.RestoreWindow); changed {
@@ -61,9 +64,6 @@ func (w *Window) settingsSheet(c *ui.Context) {
 							}
 						}),
 					)
-					w.terminalGroup(c, cfg)
-					w.editorGroup(c, cfg)
-					w.languageServersGroup(c)
 					settingsGroup(c, "Git",
 						row("Auto-fetch", "Fetches the remote of each workspace you have opened this session, quietly, in the background. It never merges or pushes.", func() {
 							label := autoFetchLabel(cfg.Workbench.AutoFetchMinutes)

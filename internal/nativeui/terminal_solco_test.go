@@ -88,6 +88,11 @@ func TestTheSettingsPageChoosesTheTerminalOwnerAndMenuAndButtonFollow(t *testing
 	if !tt.HasText("Where Open Terminal goes") || !tt.HasText("A drawer under the page") {
 		t.Fatalf("the group explains the drawer: %q", tt.Texts())
 	}
+	// the Terminal group sits below the sheet's first screen
+	if theme, ok := tt.Access("Theme"); ok {
+		tt.Scroll(theme.Bounds.X+theme.Bounds.W/2, theme.Bounds.Y+theme.Bounds.H/2, 0, 2000)
+		settle(tt, pump, 3)
+	}
 	if err := tt.Click("In Solco"); err != nil {
 		t.Fatal(err)
 	}

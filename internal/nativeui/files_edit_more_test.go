@@ -217,3 +217,27 @@ func TestSaveAsOverAnExistingFileReplacesItsContent(t *testing.T) {
 		t.Errorf("the whole file is replaced: %q", read(t, dest))
 	}
 }
+
+// The open file's row in the Files tree carries a dot while its buffer holds
+// edits that are not written, and loses it with the save.
+func TestTheOpenFilesTreeRowCarriesAnUnsavedDot(t *testing.T) {
+	_, pump, sh, tt, _ := editShell(t, map[string][]byte{"a.txt": []byte("one\n")}, "a.txt")
+	sh.setView(viewFiles)
+	settle(tt, pump, 3)
+	if tt.HasText("Unsaved changes") {
+		t.Fatal("a clean file has no dot")
+	}
+	sh.toggleEditing()
+	typeAtEnd(sh, "two\n")
+	settle(tt, pump, 3)
+	if !tt.HasText("Unsaved changes") {
+		t.Fatal("an edited file's row carries the dot")
+	}
+	if !sh.saveEdit() {
+		t.Fatal("save")
+	}
+	settle(tt, pump, 3)
+	if tt.HasText("Unsaved changes") {
+		t.Error("the dot goes with the save")
+	}
+}

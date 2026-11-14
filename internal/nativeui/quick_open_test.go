@@ -268,7 +268,14 @@ func TestTheLocatedRowReadsApartFromTheOpenFile(t *testing.T) {
 		b := info.Bounds
 		return tt.Image().RGBAAt(int(b.X+b.W-4), int(b.Y+b.H/2))
 	}
+	// the first moment is the find colour, then the row settles
+	flash := face("File handler.go")
+	sh.rightPanel.locateFlash = ""
+	settle(tt, pump, 4)
 	open, located := face("File zeta.txt"), face("File handler.go")
+	if flash == located {
+		t.Errorf("a located row flashes before it settles: %v both times", flash)
+	}
 	if open == located {
 		t.Errorf("the located row and the open file share one face: %v", open)
 	}

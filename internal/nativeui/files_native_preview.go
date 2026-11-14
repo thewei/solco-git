@@ -14,7 +14,7 @@ import (
 // preview plan.
 func (s *Shell) openFilePreview(path string) {
 	st := &s.rightPanel
-	st.located = ""
+	st.located, st.locateFlash = "", ""
 	if st.reveal != nil && st.reveal.path != path {
 		st.reveal = nil // a hit's line belongs to its own file only
 	}

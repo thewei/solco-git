@@ -253,3 +253,24 @@ func TestSettingsListsWhichLanguageServersWereFound(t *testing.T) {
 	}
 	saveEvidence(t, "lsp-settings", tt)
 }
+
+// The editing choices come right after Appearance, before the terminal and
+// window ones, so they are on the first screen of the sheet.
+func TestSettingsPutsEditorAndLanguageServersAfterAppearance(t *testing.T) {
+	w, pump := newTestWindow(t)
+	tt := newTester(w, 1280, 1000, false)
+	w.openSettings()
+	settle(tt, pump, 3)
+	y := func(name string) float32 {
+		t.Helper()
+		info, ok := tt.Access(name)
+		if !ok {
+			t.Fatalf("%q is not on the sheet", name)
+		}
+		return info.Bounds.Y
+	}
+	theme, autosave, term := y("Theme"), y("Auto-save"), y("Where Open Terminal goes")
+	if !(theme < autosave && autosave < term) {
+		t.Errorf("order: Appearance %v, Editor %v, Terminal %v", theme, autosave, term)
+	}
+}

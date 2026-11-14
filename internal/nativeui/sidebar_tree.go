@@ -103,6 +103,9 @@ type sidebarTreeSpec struct {
 	// quick open): the stronger face, so it reads apart from the open file's
 	// softer one. The open file keeps its own face when it is the located one.
 	Located bool
+	// Flashing is a located row's first moment: the find colour, as a located
+	// commit wears it, before it settles into the Located face.
+	Flashing bool
 	// Action is the row's one hover icon at the trailing edge; its slot is
 	// reserved while set, so the title never moves under the pointer.
 	Action *treeRowAction
@@ -159,6 +162,9 @@ func (s *Shell) sidebarTreeRow(c *ui.Context, spec sidebarTreeSpec) (ui.Element,
 			row.TextColor(t.Text)
 			glyph = t.Text
 		}
+	case spec.Flashing:
+		row.Background(gdPaletteFor(t).match).TextColor(t.Text)
+		glyph = t.Text
 	case spec.Located && !spec.Current:
 		row.Background(tokens.SidebarSelectStrong)
 	case spec.Current:

@@ -233,6 +233,12 @@ func filesMark(c *ui.Context, cf *gitworkbench.ChangeFile) {
 	})
 }
 
+// filesUnsavedDot marks the open file whose buffer holds edits not yet written.
+func filesUnsavedDot(c *ui.Context) {
+	ui.Box(c).Size(6, 6).Shrink(0).Radius(3).Background(c.Theme().Text.Alpha(0.75)).Label("Unsaved changes").PassThrough()
+	ui.Box(c).Width(4).Shrink(0).PassThrough()
+}
+
 // filesDirDot marks a folder that holds a change.
 func filesDirDot(c *ui.Context) {
 	ui.Box(c).Size(6, 6).Shrink(0).Radius(3).Background(codeEditorTheme(c.Theme()).Modified).PassThrough()

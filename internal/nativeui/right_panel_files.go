@@ -226,16 +226,20 @@ func (s *Shell) renderDirectoryLevel(c *ui.Context, dir string, level int) {
 		}
 		changed := marks.files[e.Path]
 		dirHolds := isDir && marks.dirs[e.Path]
+		unsaved := !isDir && e.Path == s.edit.path && s.fileDirty()
 		row, clicked := s.sidebarTreeRow(c, sidebarTreeSpec{
 			Key: "file:" + e.Path, Title: e.Name, Label: kind + " " + e.Name, Tooltip: e.Path, Level: level,
 			Folder: isDir, Expanded: isExpanded, Glyph: glyph,
 			Current: !isDir && s.rightPanel.selectedFilePath == e.Path, Dim: e.IsSymlink,
 			// The size shows on the hovered row and the open file (Selected
 			// wears the same face as Current), so names keep the full width.
-			Selected: !isDir && (s.rightPanel.selectedFilePath == e.Path || s.rightPanel.located == e.Path), Located: !isDir && s.rightPanel.located == e.Path, TrailingOnDemand: changed == nil && !dirHolds, Motion: true,
+			Selected: !isDir && (s.rightPanel.selectedFilePath == e.Path || s.rightPanel.located == e.Path), Located: !isDir && s.rightPanel.located == e.Path, Flashing: !isDir && s.rightPanel.locateFlash == e.Path, TrailingOnDemand: changed == nil && !dirHolds && !unsaved, Motion: true,
 			Nav:  &s.nav.files,
 			Menu: func(m *ui.Menu) { s.filesRowMenu(m, e) },
 			Trailing: func() {
+				if unsaved {
+					filesUnsavedDot(c)
+				}
 				// A changed file wears its status tile, a folder holding a
 				// change a dot — both always on; the size shows on demand.
 				if changed != nil {

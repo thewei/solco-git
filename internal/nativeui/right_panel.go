@@ -21,7 +21,10 @@ type rightPanelState struct {
 	// quick open): it wears the selection face and locateScroll brings it into
 	// view once. Opening any file clears it.
 	located, locateScroll string
-	filesGen              atomic.Uint64
+	// locateFlash is the located row for a moment after ⌘↵ (gitFlashFor, the
+	// same flash a located commit gets), so the eye finds where it landed.
+	locateFlash string
+	filesGen    atomic.Uint64
 
 	// Ignore state (FILES-01): the merged fixed-name + git set applies per
 	// root; showIgnored reveals everything the rules hide.
