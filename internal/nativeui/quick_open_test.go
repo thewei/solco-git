@@ -8,6 +8,7 @@ package nativeui
  */
 
 import (
+	"image/color"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -241,4 +242,35 @@ func TestQuickCommandReturnLocatesInTheTreeWithoutOpeningAndOptionReturnShowsInF
 	if w.quick.open || shown != zeta || st.selectedFilePath != handler {
 		t.Errorf("⌥↵ shows the file in Finder and opens nothing: open=%v shown=%q selected=%q", w.quick.open, shown, st.selectedFilePath)
 	}
+}
+
+// The located row and the open file are two different things on screen: the
+// located one wears the stronger selection face, the open one the softer.
+func TestTheLocatedRowReadsApartFromTheOpenFile(t *testing.T) {
+	w, pump, sh, tt, root := quickShell(t)
+	zeta := filepath.Join(root, "main", "zeta.txt")
+	sh.revealFile(zeta)
+	pump.until(t, "zeta open", func() bool { return sh.rightPanel.selectedFilePath == zeta })
+	settle(tt, pump, 3)
+	w.openQuickTab(quickTabFiles)
+	settle(tt, pump, 3)
+	tt.Type("handler")
+	settle(tt, pump, 4)
+	tt.Key(ui.Super, ui.KeyEnter)
+	settle(tt, pump, 6)
+
+	face := func(name string) color.RGBA {
+		t.Helper()
+		info, ok := tt.Access(name)
+		if !ok {
+			t.Fatalf("%s is not drawn", name)
+		}
+		b := info.Bounds
+		return tt.Image().RGBAAt(int(b.X+b.W-4), int(b.Y+b.H/2))
+	}
+	open, located := face("File zeta.txt"), face("File handler.go")
+	if open == located {
+		t.Errorf("the located row and the open file share one face: %v", open)
+	}
+	saveEvidence(t, "located-face", tt)
 }

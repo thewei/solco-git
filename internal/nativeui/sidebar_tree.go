@@ -99,6 +99,10 @@ type sidebarTreeSpec struct {
 	// Selected is the row's selection face — the one every navigation list
 	// wears (SidebarSelect); on a Deliberate row it is the stronger one.
 	Selected bool
+	// Located marks a row the tree points at without having opened it (⌘↵ in
+	// quick open): the stronger face, so it reads apart from the open file's
+	// softer one. The open file keeps its own face when it is the located one.
+	Located bool
 	// Action is the row's one hover icon at the trailing edge; its slot is
 	// reserved while set, so the title never moves under the pointer.
 	Action *treeRowAction
@@ -155,6 +159,8 @@ func (s *Shell) sidebarTreeRow(c *ui.Context, spec sidebarTreeSpec) (ui.Element,
 			row.TextColor(t.Text)
 			glyph = t.Text
 		}
+	case spec.Located && !spec.Current:
+		row.Background(tokens.SidebarSelectStrong)
 	case spec.Current:
 		// The checked-out branch / open file: full-brightness title and glyph
 		// on the neutral selection face — a check mark alone was too faint to
