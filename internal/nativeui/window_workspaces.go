@@ -94,16 +94,16 @@ func (w *Window) workspaceSwitcher(c *ui.Context, k *gorexColors) {
 		}
 		chip.Children(func() {
 			ui.Box(c).Size(14, 14).Shrink(0).Center().Children(func() {
-				ui.Icon(c, iconFolder).Size(14, 14).TextColor(t.TextMuted).PassThrough()
+				ui.Icon(c, iconFolder).Size(Controls().IconRegular, Controls().IconRegular).TextColor(t.TextMuted).PassThrough()
 				if w.workspaceNeedsConfirm(front) {
-					ui.Box(c).Absolute().Left(9).Top(7).Size(7, 7).Radius(3.5).PassThrough().
+					ui.Box(c).Absolute().Left(9).Top(7).Size(7, 7).Radius(Radius().Pill).PassThrough().
 						Background(designTokens(t.Dark).StatusColor(ToneWarning, t.Dark))
 				}
 			})
 			ui.Text(c, label).FontSize(Typography().Caption).TextColor(t.Text).
 				SingleLine().Ellipsis("…").Shrink(1).MinWidth(0)
 			ui.Box(c).Grow(1).PassThrough()
-			ui.Icon(c, iconChevronDown).Size(10, 10).TextColor(t.TextMuted).Shrink(0)
+			ui.Icon(c, iconChevronDown).Size(Controls().IconSmall, Controls().IconSmall).TextColor(t.TextMuted).Shrink(0)
 		})
 	})
 	// While the sidebar slides shut the band's chip is already there beside
@@ -128,12 +128,12 @@ func (w *Window) workspaceChip(c *ui.Context, k *gorexColors) {
 	gorexToggleFace(chip, k, true)
 	chip.Children(func() {
 		if w.workspaceNeedsConfirm(front) {
-			ui.Box(c).Size(6, 6).Radius(3).Shrink(0).PassThrough().
+			ui.Box(c).Size(6, 6).Radius(Radius().Pill).Shrink(0).PassThrough().
 				Background(designTokens(t.Dark).StatusColor(ToneWarning, t.Dark))
 		}
 		ui.Text(c, label).FontSize(Typography().Section).FontWeight(WeightSemibold).TextColor(t.Text).
 			SingleLine().Ellipsis("…").Shrink(1).MinWidth(0).PassThrough()
-		ui.Icon(c, iconChevronDown).Size(12, 12).TextColor(t.TextMuted).Shrink(0).PassThrough()
+		ui.Icon(c, iconChevronDown).Size(Controls().IconSmall, Controls().IconSmall).TextColor(t.TextMuted).Shrink(0).PassThrough()
 	})
 	w.workspacePopover(c, k, chip, true)
 }
@@ -317,7 +317,7 @@ func (w *Window) workspaceManageRow(c *ui.Context, k *gorexColors, i int, ws *wo
 	t := c.Theme()
 	id := ws.id
 	formRowLead(c, func() {
-		ui.Icon(c, iconFolder).Size(16, 16).TextColor(t.TextMuted).Shrink(0)
+		ui.Icon(c, iconFolder).Size(Controls().IconRegular, Controls().IconRegular).TextColor(t.TextMuted).Shrink(0)
 	}, label, tildePath(ws.sh.dir), func() {
 		ui.Row(c.Key("workspace-row:" + itoa(id))).Gap(2).Shrink(0).AlignItems(ui.Center).Children(func() {
 			up := gorexIconButton(c, k, iconArrowUp, "Move "+label+" up", "Move Up", false, gorexRowBtn, gorexRowGlyph)

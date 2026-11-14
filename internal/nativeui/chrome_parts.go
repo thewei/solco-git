@@ -22,7 +22,7 @@ const switcherListMaxHeight = 280
 // on the tree grid, under the chevron and title columns of the rows below.
 func switcherChip(c *ui.Context, key, label, text, tooltip string, glyph *ui.SVG, size float32, weight int, color ui.Color) ui.Element {
 	t := c.Theme()
-	chip := tipped(c, ui.ButtonBase(c.Key(key)).Height(22).Padding(0, treeRowPad).Radius(4).FocusRing(false).
+	chip := tipped(c, ui.ButtonBase(c.Key(key)).Height(22).Padding(0, treeRowPad).Radius(Radius().Control).FocusRing(false).
 		AlignItems(ui.Center).Label(label), tooltip)
 	if chip.Hovered() {
 		chip.Background(t.SurfaceHover)
@@ -34,7 +34,7 @@ func switcherChip(c *ui.Context, key, label, text, tooltip string, glyph *ui.SVG
 			ui.Text(c, text).FontSize(size).FontWeight(weight).TextColor(color).SingleLine().Shrink(1).MinWidth(0)
 		}
 		ui.Box(c).Width(3).Shrink(0).PassThrough()
-		ui.Icon(c, iconChevronDown).FontSize(9).TextColor(t.TextMuted).Shrink(0)
+		ui.Icon(c, iconChevronDown).FontSize(Controls().IconSmall).TextColor(t.TextMuted).Shrink(0)
 	})
 	return chip
 }
@@ -63,7 +63,7 @@ func crumbItemRow(c *ui.Context, glyph *ui.SVG, label string, selected bool) ui.
 			row.Background(tint)
 		}
 		row.Children(func() {
-			ui.Icon(c, glyph).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
+			ui.Icon(c, glyph).Size(Controls().IconRegular, Controls().IconRegular).TextColor(t.TextMuted).Shrink(0)
 			ui.Text(c, label).FontSize(Typography().Body).Grow(1).SingleLine()
 		})
 	})
@@ -118,7 +118,7 @@ func headerActions(c *ui.Context, build func(m *ui.Menu)) {
 // the label (a push with commits waiting).
 func bandAction(c *ui.Context, k *gorexColors, glyph *ui.SVG, label, tip string, count int, on bool) ui.Element {
 	t := c.Theme()
-	b := tipped(c, ui.ButtonBase(c.Key("band:"+label)).Height(30).Padding(0, 10).Gap(6).
+	b := tipped(c, ui.ButtonBase(c.Key("band:"+label)).Height(Controls().RegularHeight).Padding(0, 10).Gap(6).
 		Radius(Radius().Row).AlignItems(ui.Center).Shrink(0).Label(label), tip)
 	gorexToggleFace(b, k, false)
 	ink := t.TextMuted
@@ -126,7 +126,7 @@ func bandAction(c *ui.Context, k *gorexColors, glyph *ui.SVG, label, tip string,
 		ink = t.Text
 	}
 	b.Children(func() {
-		ui.Icon(c, glyph).Size(15, 15).TextColor(ink).Shrink(0).PassThrough()
+		ui.Icon(c, glyph).Size(Controls().IconRegular, Controls().IconRegular).TextColor(ink).Shrink(0).PassThrough()
 		ui.Text(c, label).FontSize(Typography().Body).FontWeight(WeightMedium).TextColor(ink).SingleLine().PassThrough()
 		if count > 0 {
 			ui.Text(c, itoa(count)).FontSize(Typography().BodySmall).FontWeight(WeightSemibold).

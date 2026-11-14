@@ -221,16 +221,20 @@ func (s *Shell) terminalDrawer(c *ui.Context, pageH float32) {
 	}
 	maxH := max(pageH-termMinAbove, termMinHeight)
 	height := clampF(d.height, termMinHeight, maxH)
-	if drag := splitHandle(c, tokens, splitHorizontal, "Resize terminal"); drag.Reset {
+	drag := splitHandle(c, tokens, splitHorizontal, "Resize terminal")
+	if drag.Reset {
 		d.height = clampF(termDefaultHeight, termMinHeight, maxH)
 		height = d.height
 	} else if drag.Held {
 		d.height = clampF(height-drag.DY, termMinHeight, maxH)
 		height = d.height
 	}
+	if s.splitFinished("terminal", drag) {
+		s.savePaneSizes()
+	}
 	ui.Column(c).FillWidth().Height(height).Shrink(0).MinHeight(0).Children(func() {
-		ui.Row(c).FillWidth().Height(32).Shrink(0).Padding(0, 10).Gap(8).AlignItems(ui.Center).Children(func() {
-			ui.Icon(c, iconTerminal).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
+		ui.Row(c).FillWidth().Height(sectionHeadHeight).Shrink(0).Padding(0, 10).Gap(8).AlignItems(ui.Center).Children(func() {
+			ui.Icon(c, iconTerminal).Size(Controls().IconRegular, Controls().IconRegular).TextColor(t.TextMuted).Shrink(0)
 			ui.Text(c, "Terminal").FontSize(Typography().BodySmall).FontWeight(WeightMedium).SingleLine().Shrink(0)
 			status := d.title
 			if d.exited {

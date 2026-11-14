@@ -281,7 +281,7 @@ func (s *Shell) filesPreviewBar(c *ui.Context, selected string) {
 	// padding is the title bar's (XL), so the name sits under the page title.
 	ui.Row(c).FillWidth().MinHeight(Controls().RegularHeight+2*sp.S).Padding(sp.S, sp.XL).Gap(sp.M).AlignItems(ui.Center).
 		BorderWidth(0, 0, 1, 0).BorderColor(designTokens(t.Dark).BorderSubtle).Children(func() {
-		ui.Icon(c, iconFile).Size(15, 15).TextColor(t.TextMuted).Shrink(0)
+		ui.Icon(c, iconFile).Size(Controls().IconRegular, Controls().IconRegular).TextColor(t.TextMuted).Shrink(0)
 		tipped(c, ui.Text(c, filepath.Base(selected)).FontSize(typ.Body).FontWeight(WeightSemibold).
 			Shrink(1).MinWidth(0).SingleLine(), selected)
 		// The folder the file sits in, quiet, takes the room the name leaves.

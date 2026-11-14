@@ -36,13 +36,21 @@ func (s *Shell) gitSplitReviewSurface(c *ui.Context) {
 				s.gitUpperHeight = gitSplitDefaultTop
 			}
 			upper := clampF(s.gitUpperHeight, gitSplitMinTop, maxTop)
+			if !s.gitUpperSized {
+				upper = clampF(min(upper, s.commitListFitHeight()), gitSplitMinTop, maxTop)
+			}
 			ui.Column(c).FillWidth().Height(upper).Shrink(0).MinHeight(0).Children(func() {
 				s.gitCommitHistoryPane(c)
 			})
-			if drag := splitHandle(c, s.tokens(t.Dark), splitHorizontal, "Resize Git history and diff panes"); drag.Reset {
-				s.gitUpperHeight = clampF(gitSplitDefaultTop, gitSplitMinTop, maxTop)
-			} else if drag.Held {
+			drag := splitHandle(c, s.tokens(t.Dark), splitHorizontal, "Resize Git history and diff panes")
+			if drag.Reset {
+				s.gitUpperHeight, s.gitUpperSized = gitSplitDefaultTop, false
+			} else if drag.Held && drag.DY != 0 {
 				s.gitUpperHeight = clampF(upper+drag.DY, gitSplitMinTop, maxTop)
+				s.gitUpperSized = true
+			}
+			if s.splitFinished("history", drag) {
+				s.savePaneSizes()
 			}
 			s.gitCommitReview(c)
 			return
@@ -134,10 +142,14 @@ func (s *Shell) gitFileNavigationColumn(c *ui.Context, body func()) {
 	}
 	width, maxWidth := s.gitFilePaneLimits(windowW)
 	ui.Column(c).Width(width).FillHeight().Shrink(0).MinHeight(0).Children(body)
-	if drag := splitHandle(c, s.tokens(t.Dark), splitVertical, "Resize Git file navigator"); drag.Reset {
+	drag := splitHandle(c, s.tokens(t.Dark), splitVertical, "Resize Git file navigator")
+	if drag.Reset {
 		s.gitFilePaneWidth = clampF(gitFilePaneDefaultWidth, gitFilePaneMinWidth, maxWidth)
 	} else if drag.Held {
 		s.gitFilePaneWidth = clampF(width+drag.DX, gitFilePaneMinWidth, maxWidth)
+	}
+	if s.splitFinished("filenav", drag) {
+		s.savePaneSizes()
 	}
 }
 
@@ -191,7 +203,7 @@ func (s *Shell) gitQuickCommitForm(c *ui.Context, snap *gitworkbench.ChangesSnap
 		}
 		textField(c.Key("git-quick-body"), &s.gitQuickBody).FillWidth().Height(Controls().RegularHeight).
 			Placeholder("Description (optional)").Label("Commit description draft")
-		ui.Row(c).FillWidth().Height(28).AlignItems(ui.Center).Gap(6).Children(func() {
+		ui.Row(c).FillWidth().Height(Controls().RegularHeight).AlignItems(ui.Center).Gap(6).Children(func() {
 			ui.Checkbox(c, &s.gitQuickAmend, "Amend")
 			ui.Spacer(c)
 			ui.Text(c, pluralFiles(len(snap.Files))).FontSize(Typography().BodySmall).TextColor(t.TextMuted)
@@ -331,10 +343,7 @@ func (s *Shell) gitCommitFiles(c *ui.Context) {
 		s.gitListHead(c, &headerSearch{
 			Query: &s.gitCommitFilesFilter, Open: &s.gitCommitFilesSearchOpen, Label: "Filter commit files", Button: "Search commit files",
 		}, 10, func() {
-			ui.Text(c, "Changed Files").FontSize(Typography().BodySmall).FontWeight(WeightSemibold).SingleLine()
-			if snap != nil {
-				ui.Textf(c, "%d", len(snap.Files)).FontSize(Typography().BodySmall).TextColor(t.TextMuted)
-			}
+			s.changesSummary(c, snap)
 		})
 		if snap == nil {
 			ui.Column(c).Grow(1).Center().Children(func() { ui.Spinner(c).Size(15, 15) })
@@ -461,4 +470,15 @@ func (s *Shell) gitCommitStrip(c *ui.Context) {
 			}
 		})
 	})
+}
+
+// commitListFitHeight is the height a history of this many commits needs: the
+// list head, the column head and one 22-point row each. A short history gets a
+// short list instead of a screenful of blank space; the default height is the
+// ceiling, so a long one is unchanged (2026-11-14 UX pass).
+func (s *Shell) commitListFitHeight() float32 {
+	if s.git.commitsLoading && len(s.git.commits) == 0 {
+		return gitSplitDefaultTop
+	}
+	return sectionHeadHeight + 22 + float32(len(s.git.commits))*22 + 12
 }

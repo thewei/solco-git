@@ -418,7 +418,7 @@ func (s *Shell) gdFileHeader(c *ui.Context, pal *gdPalette, idx int, f *gdFile) 
 			s.git.gdRowsDirty = true
 		}
 		toggle.FocusRing(false).Children(func() {
-			chevron := ui.Box(c).Size(26, 26).Radius(13).Center().Shrink(0)
+			chevron := ui.Box(c).Size(26, 26).Radius(Radius().Pill).Center().Shrink(0)
 			if toggle.Hovered() {
 				chevron.Background(pal.hover)
 			}
@@ -427,7 +427,7 @@ func (s *Shell) gdFileHeader(c *ui.Context, pal *gdPalette, idx int, f *gdFile) 
 				if collapsed {
 					target = -90
 				}
-				ic := ui.Icon(c, iconChevronDown).FontSize(15).TextColor(t.TextMuted)
+				ic := ui.Icon(c, iconChevronDown).FontSize(Controls().IconRegular).TextColor(t.TextMuted)
 				ic.Rotate(ic.Animate("rot", target, 160*time.Millisecond))
 			})
 			pathColor := t.Text
@@ -510,7 +510,7 @@ func (s *Shell) gdFileHeader(c *ui.Context, pal *gdPalette, idx int, f *gdFile) 
 func (s *Shell) gdViewedButton(c *ui.Context, pal *gdPalette, f *gdFile, viewed bool) {
 	t := c.Theme()
 	on := viewed
-	b := ui.CheckboxBase(c, &on).Gap(7).Height(30).Padding(0, 11).Radius(Radius().Pill).Shrink(0).
+	b := ui.CheckboxBase(c, &on).Gap(7).Height(Controls().RegularHeight).Padding(0, 11).Radius(Radius().Pill).Shrink(0).
 		Border(1, ui.RGBA(127, 127, 127, 0.22)).Label("Viewed")
 	if b.Changed() {
 		s.gdSetViewed(f, on)
@@ -522,10 +522,10 @@ func (s *Shell) gdViewedButton(c *ui.Context, pal *gdPalette, f *gdFile, viewed 
 		b.Border(1, pal.viewed.Alpha(0.44)).TextColor(pal.viewed)
 	}
 	b.Children(func() {
-		box := ui.Box(c).Size(15, 15).Radius(4).Center()
+		box := ui.Box(c).Size(15, 15).Radius(iconButtonRadius(15)).Center()
 		if viewed {
 			box.Background(pal.viewed).Children(func() {
-				ui.Icon(c, iconCheck).FontSize(11).TextColor(pal.codeBg)
+				ui.Icon(c, iconCheck).FontSize(Controls().IconSmall).TextColor(pal.codeBg)
 			})
 		} else {
 			box.Border(1.5, ui.RGBA(127, 127, 127, 0.45))
@@ -572,7 +572,7 @@ func (s *Shell) gdGapRow(c *ui.Context, pal *gdPalette, f *gdFile, r *gdRow) {
 				if b.Hovered() {
 					b.TextColor(t.Text).Background(pal.hover)
 				}
-				b.Children(func() { ui.Icon(c, svg).FontSize(14) })
+				b.Children(func() { ui.Icon(c, svg).FontSize(Controls().IconRegular) })
 				if b.Clicked() {
 					action()
 				}

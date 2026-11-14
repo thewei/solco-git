@@ -46,7 +46,7 @@ func (w *Window) welcome(c *ui.Context) {
 				ui.Box(c).Height(18).Shrink(0).PassThrough()
 				open := regularPrimaryButton(c, "").Label("Open Repository…").Gap(Spacing().S)
 				open.Children(func() {
-					ui.Icon(c, iconFolderOpen).Size(15, 15).TextColor(t.AccentText).Shrink(0).PassThrough()
+					ui.Icon(c, iconFolderOpen).Size(Controls().IconRegular, Controls().IconRegular).TextColor(t.AccentText).Shrink(0).PassThrough()
 					ui.Text(c, "Open Repository…").Shrink(0).PassThrough()
 					tipKeycaps(c, acceleratorKeycaps(accelOpen), t.Dark, t.AccentText)
 				})
@@ -82,12 +82,12 @@ func (w *Window) recentCard(c *ui.Context) {
 				row.Background(tint)
 			}
 			row.Children(func() {
-				ui.Icon(c, iconFolder).Size(16, 16).TextColor(t.TextMuted).Shrink(0).PassThrough()
+				ui.Icon(c, iconFolder).Size(Controls().IconRegular, Controls().IconRegular).TextColor(t.TextMuted).Shrink(0).PassThrough()
 				ui.Text(c, pathBase(root)).FontWeight(WeightSemibold).SingleLine().Shrink(0).PassThrough()
 				ui.Text(c, tildePath(root)).FontSize(Typography().BodySmall).TextColor(t.TextMuted).SingleLine().
 					Ellipsis("…").Grow(1).MinWidth(0).PassThrough()
 				if branch := w.recentBranch[root]; branch != "" {
-					ui.Icon(c, iconBranch).Size(12, 12).TextColor(t.TextMuted).Shrink(0).PassThrough()
+					ui.Icon(c, iconBranch).Size(Controls().IconSmall, Controls().IconSmall).TextColor(t.TextMuted).Shrink(0).PassThrough()
 					ui.Text(c, branch).FontSize(Typography().BodySmall).TextColor(t.TextMuted).SingleLine().
 						Ellipsis("…").Shrink(0).MaxWidth(150).PassThrough()
 				}

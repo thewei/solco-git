@@ -154,7 +154,7 @@ func gitCommitChips(c *ui.Context, chips []gitChip, accent ui.Color, click func(
 				rest = append(rest, r.text)
 			}
 			tipped(c, ui.Text(c, "+"+itoa(len(rest))).FontSize(Typography().Micro).FontWeight(WeightSemibold).
-				Padding(2, 5).Radius(3).Background(t.SurfaceHover).TextColor(accent).SingleLine(), strings.Join(rest, "\n"))
+				Padding(2, 5).Radius(Radius().Control).Background(t.SurfaceHover).TextColor(accent).SingleLine(), strings.Join(rest, "\n"))
 			return
 		}
 		tone := gitLaneColors[chip.tone%len(gitLaneColors)]
@@ -164,7 +164,7 @@ func gitCommitChips(c *ui.Context, chips []gitChip, accent ui.Color, click func(
 			// The checked-out branch is the solid one, with a check.
 			bg, border, fg, glyph = tone.Alpha(0.34), tone, t.Text, iconCheck
 		}
-		el := ui.Row(c).Height(18).Gap(4).AlignItems(ui.Center).Padding(0, 6).Radius(4).Background(bg).
+		el := ui.Row(c).Height(18).Gap(4).AlignItems(ui.Center).Padding(0, 6).Radius(Radius().Control).Background(bg).
 			Border(1, border).Shrink(0).MaxWidth(160).Children(func() {
 			ui.Icon(c, glyph).FontSize(10).TextColor(fg).Shrink(0)
 			ui.Text(c, chip.text).FontSize(Typography().Caption).FontWeight(WeightSemibold).TextColor(fg).SingleLine().MinWidth(0)

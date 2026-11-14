@@ -238,7 +238,7 @@ func statusPill(c *ui.Context, text string, tone StatusTone) {
 	ui.Row(c).Gap(sp.XXS).AlignItems(ui.Center).
 		Radius(Radius().Row).Padding(sp.XXS, sp.S).
 		Background(tokens.StatusBackground(tone, dark)).Shrink(0).Children(func() {
-		ui.Box(c).Size(6, 6).Radius(3).Background(color).Shrink(0)
+		ui.Box(c).Size(6, 6).Radius(Radius().Pill).Background(color).Shrink(0)
 		ui.Text(c, text).FontSize(typ.Micro).FontWeight(WeightSemibold).TextColor(color)
 	})
 }
@@ -364,3 +364,8 @@ type splitDrag struct {
 	// Reset is true on a double click: the region goes back to its default size.
 	Reset bool
 }
+
+// sectionHeadHeight is the height of a list's or drawer's head strip (the
+// Changes / Commits list head, the terminal drawer head): one step above the
+// regular control, so the controls inside it keep a margin.
+const sectionHeadHeight float32 = 32

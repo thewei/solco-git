@@ -235,13 +235,13 @@ func filesMark(c *ui.Context, cf *gitworkbench.ChangeFile) {
 
 // filesUnsavedDot marks the open file whose buffer holds edits not yet written.
 func filesUnsavedDot(c *ui.Context) {
-	ui.Box(c).Size(6, 6).Shrink(0).Radius(3).Background(c.Theme().Text.Alpha(0.75)).Label("Unsaved changes").PassThrough()
+	ui.Box(c).Size(6, 6).Shrink(0).Radius(Radius().Pill).Background(c.Theme().Text.Alpha(0.75)).Label("Unsaved changes").PassThrough()
 	ui.Box(c).Width(4).Shrink(0).PassThrough()
 }
 
 // filesDirDot marks a folder that holds a change.
 func filesDirDot(c *ui.Context) {
-	ui.Box(c).Size(6, 6).Shrink(0).Radius(3).Background(codeEditorTheme(c.Theme()).Modified).PassThrough()
+	ui.Box(c).Size(6, 6).Shrink(0).Radius(Radius().Pill).Background(codeEditorTheme(c.Theme()).Modified).PassThrough()
 }
 
 // readDiffBase is the text a file's gutter is drawn against: its version in
@@ -407,7 +407,7 @@ func (s *Shell) filesBlameBody(c *ui.Context, selected string) {
 					return
 				}
 				if fresh {
-					ui.Box(c).Size(14, 14).Shrink(0).Radius(7).Background(t.TextMuted.Alpha(0.35)).Center().Children(func() {
+					ui.Box(c).Size(14, 14).Shrink(0).Radius(Radius().Pill).Background(t.TextMuted.Alpha(0.35)).Center().Children(func() {
 						ui.Icon(c, iconEdit).Size(9, 9).TextColor(t.Text).PassThrough()
 					})
 					ui.Text(c, "Not committed yet").FontSize(Typography().BodySmall).TextColor(t.TextMuted).SingleLine().

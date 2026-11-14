@@ -21,6 +21,7 @@ func sample() Settings {
 	s.Window.Active = 1
 	s.Window.Recent = []string{"/r/tool", "/r/app"}
 	s.Window.SidebarWidth = 280
+	s.Window.Panes = PaneSizes{StagedHeight: 180, HistoryHeight: 360, FileNavWidth: 310, TerminalHeight: 240}
 	return s
 }
 
@@ -179,7 +180,8 @@ func TestDocumentKeysAreTheKnownOnes(t *testing.T) {
 		"workbench.terminal_in_solco", "workbench.format_on_save", "workbench.auto_save",
 		"window", "window.workspaces", "window.workspaces.root", "window.workspaces.view",
 		"window.tabs", "window.tabs.root", "window.tabs.view", "window.active", "window.recent",
-		"window.sidebar_width",
+		"window.sidebar_width", "window.panes", "window.panes.staged_height", "window.panes.history_height",
+		"window.panes.file_nav_width", "window.panes.terminal_height",
 	}
 	for _, key := range want {
 		if !keys[key] {

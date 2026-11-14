@@ -144,6 +144,10 @@ func normalizeSettings(cfg settings.Settings) settings.Settings {
 	if len(cfg.Window.Workspaces) > maxWorkspaces {
 		cfg.Window.Workspaces = cfg.Window.Workspaces[:maxWorkspaces]
 	}
+	p := &cfg.Window.Panes
+	for _, v := range []*int{&p.StagedHeight, &p.HistoryHeight, &p.FileNavWidth, &p.TerminalHeight} {
+		*v = max(0, min(*v, paneSizeMax))
+	}
 	switch cfg.General.Appearance {
 	case "system", "light", "dark":
 	default:

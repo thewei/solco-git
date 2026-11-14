@@ -135,7 +135,7 @@ func (s *Shell) filesStartRow(c *ui.Context, key, abs, name, detail, status stri
 	row.Transition(rowFade)
 	row.Children(func() {
 		ui.Row(c).FillWidth().Gap(sp.S).AlignItems(ui.Center).Children(func() {
-			ui.Icon(c, iconFile).Size(14, 14).TextColor(t.TextMuted).Shrink(0)
+			ui.Icon(c, iconFile).Size(Controls().IconRegular, Controls().IconRegular).TextColor(t.TextMuted).Shrink(0)
 			ui.Text(c, name).SingleLine().Shrink(0)
 			ui.Text(c, detail).FontSize(Typography().BodySmall).TextColor(t.TextMuted).SingleLine().Grow(1).MinWidth(0)
 			if status != "" {

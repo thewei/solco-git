@@ -371,7 +371,7 @@ func (s *Shell) lspFoot(c *ui.Context) {
 	st := s.lspManager().Status(path)
 	d := &s.lsp.doc
 	dot := func(tone StatusTone) {
-		ui.Box(c).Size(7, 7).Radius(3.5).Background(tokens.StatusColor(tone, t.Dark)).Shrink(0)
+		ui.Box(c).Size(7, 7).Radius(Radius().Pill).Background(tokens.StatusColor(tone, t.Dark)).Shrink(0)
 	}
 	switch st.State {
 	case lsp.StateMissing:

@@ -267,7 +267,7 @@ func (s *Shell) gdMediaSideView(c *ui.Context, pal *gdPalette, label string, col
 		switch {
 		case side.bmp != nil:
 			scale := min(1, room/float32(side.w), gdMediaMaxH/float32(side.h))
-			ui.Box(c).Border(1, pal.cardBorder).Radius(4).Children(func() {
+			ui.Box(c).Border(1, pal.cardBorder).Radius(Radius().Control).Children(func() {
 				ui.Image(c, side.bmp).Size(float32(side.w)*scale, float32(side.h)*scale)
 			})
 		case side.note != "":

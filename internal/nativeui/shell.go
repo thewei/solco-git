@@ -139,11 +139,16 @@ type Shell struct {
 	// is the height it was laid out at last frame, the base of the next drag.
 	stagedPaneSized bool
 	stagedPaneShown float32
-	unstagedOpen    bool
-	stagedOpen      bool
+	// splitDown is each seam's held state of the last frame (pane_sizes.go).
+	splitDown    map[string]bool
+	unstagedOpen bool
+	stagedOpen   bool
 
 	// The Changes center is split between commits/files and the Diff viewer.
-	gitUpperHeight       float32
+	gitUpperHeight float32
+	// gitUpperSized is true once the user chose the commit list's height (a drag
+	// or a stored size); until then a short history gets a short list.
+	gitUpperSized        bool
 	gitFilePaneWidth     float32
 	gitCommitBodyOpen    bool // the commit card shows the whole body
 	gitQuickSubject      string
@@ -233,6 +238,7 @@ func NewShell(w *Window, dir string) *Shell {
 	s.sidebarW = sidebarWidth
 	s.gitUpperHeight = gitSplitDefaultTop
 	s.gitFilePaneWidth = gitFilePaneDefaultWidth
+	s.loadPaneSizes()
 	s.gitTreeClosed = make(map[string]bool)
 	s.unstagedOpen, s.stagedOpen = true, true
 	s.git.splitLayout = s.settings.Workbench.SplitDiff

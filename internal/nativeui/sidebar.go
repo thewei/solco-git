@@ -25,17 +25,7 @@ func (s *Shell) sidebarFilesView(c *ui.Context) {
 				s.git.gdRowsDirty = true
 			},
 		}, 10, func() {
-			if snap == nil {
-				return
-			}
-			ui.Text(c, pluralFiles(len(snap.Files))).FontSize(Typography().BodySmall).TextColor(t.TextMuted).SingleLine()
-			tipped(c, ui.Row(c).Gap(6).Shrink(0), "Total change: "+gdLines(snap.TotalAdditions, "added")+", "+gdLines(snap.TotalDeletions, "removed")).Children(func() {
-				ui.Text(c, "+"+gdThousands(snap.TotalAdditions)).Font(gdCodeFont()).FontSize(Typography().BodySmall).FontWeight(WeightSemibold).TextColor(pal.addText)
-				ui.Text(c, "-"+gdThousands(snap.TotalDeletions)).Font(gdCodeFont()).FontSize(Typography().BodySmall).FontWeight(WeightSemibold).TextColor(pal.delText)
-			})
-			if snap.Truncated {
-				ui.Text(c, "partial").FontSize(Typography().Micro).TextColor(t.TextMuted)
-			}
+			s.changesSummary(c, snap)
 		})
 
 		if s.git.root == "" {
@@ -425,6 +415,9 @@ func (s *Shell) gdPaneDivider(c *ui.Context) {
 		s.stagedPaneHeight = max(s.stagedPaneShown-drag.DY, 60)
 		s.stagedPaneSized = true
 	}
+	if s.splitFinished("staged", drag) {
+		s.savePaneSizes()
+	}
 }
 
 // stagedListHeight is the Staged list's height. By default it is the stored
@@ -464,4 +457,25 @@ func clampF(v, lo, hi float32) float32 {
 		return hi
 	}
 	return v
+}
+
+// changesSummary is the list head's one summary of a changed-file list — the
+// file count, the added / removed totals, "partial" when the list was cut —
+// shared by the working tree's and a commit's file column so the two heads read
+// the same (2026-11-14 UX pass: a commit's head said "Changed Files 6" in a
+// heavier weight beside the working tree's muted "16 files +16 -0").
+func (s *Shell) changesSummary(c *ui.Context, snap *gitworkbench.ChangesSnapshot) {
+	if snap == nil {
+		return
+	}
+	t := c.Theme()
+	pal := gdPaletteFor(t)
+	ui.Text(c, pluralFiles(len(snap.Files))).FontSize(Typography().BodySmall).TextColor(t.TextMuted).SingleLine()
+	tipped(c, ui.Row(c).Gap(6).Shrink(0), "Total change: "+gdLines(snap.TotalAdditions, "added")+", "+gdLines(snap.TotalDeletions, "removed")).Children(func() {
+		ui.Text(c, "+"+gdThousands(snap.TotalAdditions)).Font(gdCodeFont()).FontSize(Typography().BodySmall).FontWeight(WeightSemibold).TextColor(pal.addText)
+		ui.Text(c, "-"+gdThousands(snap.TotalDeletions)).Font(gdCodeFont()).FontSize(Typography().BodySmall).FontWeight(WeightSemibold).TextColor(pal.delText)
+	})
+	if snap.Truncated {
+		ui.Text(c, "partial").FontSize(Typography().Micro).TextColor(t.TextMuted)
+	}
 }

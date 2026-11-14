@@ -248,7 +248,7 @@ func (s *Shell) multiPushSection(c *ui.Context, title string, refs []gitworkbenc
 	for i := range refs {
 		ref := refs[i]
 		key := pickKey(ref)
-		ui.Row(c.Key("push-" + key)).FillWidth().Height(28).Gap(Spacing().S).AlignItems(ui.Center).Children(func() {
+		ui.Row(c.Key("push-" + key)).FillWidth().Height(Controls().RegularHeight).Gap(Spacing().S).AlignItems(ui.Center).Children(func() {
 			picked := d.picked[key]
 			box := ui.Checkbox(c.Key("push-box-"+key), &picked, "").Label(ref.Name)
 			if ref.Blocked != "" {

@@ -89,6 +89,22 @@ type WindowSettings struct {
 	Recent []string `json:"recent,omitempty"`
 	// SidebarWidth is the sidebar's dragged width; 0 keeps the default.
 	SidebarWidth int `json:"sidebar_width,omitempty"`
+	// Panes are the sizes the user dragged the resizable seams to; a zero
+	// field keeps that seam's default (2026-11-14 UX decision).
+	Panes PaneSizes `json:"panes,omitempty"`
+}
+
+// PaneSizes are the dragged sizes of the resizable regions, in points. They are
+// window-wide: a workspace that opens takes them; they hold no content.
+type PaneSizes struct {
+	// StagedHeight is the Staged list's height in Changes.
+	StagedHeight int `json:"staged_height,omitempty"`
+	// HistoryHeight is the commit list's height above the review in Commits.
+	HistoryHeight int `json:"history_height,omitempty"`
+	// FileNavWidth is the changed-file navigator's width beside the diff.
+	FileNavWidth int `json:"file_nav_width,omitempty"`
+	// TerminalHeight is the terminal drawer's height.
+	TerminalHeight int `json:"terminal_height,omitempty"`
 }
 
 // Migrate folds the keys an older build wrote into the current ones, so a

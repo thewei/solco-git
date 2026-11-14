@@ -237,7 +237,7 @@ func (w *Window) quickRow(c *ui.Context, k *gorexColors, item quickItem, query s
 			row.Background(tint)
 		}
 		row.Children(func() {
-			ui.Icon(c, iconFolder).Size(15, 15).TextColor(t.TextMuted).Shrink(0).PassThrough()
+			ui.Icon(c, iconFolder).Size(Controls().IconRegular, Controls().IconRegular).TextColor(t.TextMuted).Shrink(0).PassThrough()
 			pre, mid, post := splitMatch(item.Name, query)
 			ui.Row(c).Shrink(0).AlignItems(ui.Center).PassThrough().Children(func() {
 				if pre != "" {
@@ -258,11 +258,11 @@ func (w *Window) quickRow(c *ui.Context, k *gorexColors, item quickItem, query s
 			ui.Text(c, detail).FontSize(Typography().BodySmall).TextColor(t.TextMuted).SingleLine().
 				Ellipsis("…").Grow(1).MinWidth(0).PassThrough()
 			if item.Dirty {
-				ui.Box(c).Size(6, 6).Radius(3).Shrink(0).PassThrough().
+				ui.Box(c).Size(6, 6).Radius(Radius().Pill).Shrink(0).PassThrough().
 					Background(tokens.StatusColor(ToneWarning, t.Dark))
 			}
 			if item.Current {
-				ui.Icon(c, iconCheck).Size(14, 14).TextColor(t.Accent).Shrink(0).PassThrough()
+				ui.Icon(c, iconCheck).Size(Controls().IconRegular, Controls().IconRegular).TextColor(t.Accent).Shrink(0).PassThrough()
 			}
 		})
 	})

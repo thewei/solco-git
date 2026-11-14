@@ -326,7 +326,7 @@ func (s *Shell) courierDestinationList(c *ui.Context, st *courierState) {
 			s.courierPickDest(i)
 		}
 		row.Children(func() {
-			ui.Icon(c, iconWorktree).Size(14, 14).Shrink(0).TextColor(t.TextMuted)
+			ui.Icon(c, iconWorktree).Size(Controls().IconRegular, Controls().IconRegular).Shrink(0).TextColor(t.TextMuted)
 			ui.Text(c, courierLabel(w)).FontSize(Typography().Body).FontWeight(WeightMedium).SingleLine().Shrink(0)
 			ui.Text(c, tildePath(w.Path)).Font(gdCodeFont()).FontSize(Typography().BodySmall).TextColor(t.TextMuted).
 				SingleLine().Ellipsis("…").Grow(1).MinWidth(0)

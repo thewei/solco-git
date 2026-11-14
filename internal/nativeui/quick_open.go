@@ -383,7 +383,7 @@ func (w *Window) quickOpenRowView(c *ui.Context, k *gorexColors, row *quickOpenR
 			el.Background(tint)
 		}
 		el.Children(func() {
-			ui.Icon(c, iconFile).Size(15, 15).TextColor(t.TextMuted).Shrink(0).PassThrough()
+			ui.Icon(c, iconFile).Size(Controls().IconRegular, Controls().IconRegular).TextColor(t.TextMuted).Shrink(0).PassThrough()
 			ui.Column(c).Grow(1).MinWidth(0).Children(func() {
 				ui.Row(c).Gap(6).AlignItems(ui.Center).PassThrough().Children(func() {
 					if cut := len(row.rel) - len(name); row.line == 0 && len(row.hl) > 0 {

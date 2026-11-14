@@ -280,18 +280,18 @@ func (s *Shell) branchChip(c *ui.Context) ui.Element {
 	if up := s.git.upstream; up.OK {
 		ahead = up.Ahead
 	}
-	chip := tipped(c, ui.ButtonBase(c.Key("band-branch")).Height(30).Padding(0, 10).Gap(7).
+	chip := tipped(c, ui.ButtonBase(c.Key("band-branch")).Height(Controls().RegularHeight).Padding(0, 10).Gap(7).
 		Radius(Radius().Row).AlignItems(ui.Center).Shrink(1).MinWidth(0).Label("Switch branch"), tip)
 	gorexToggleFace(chip, k, s.branchMenuOpen)
 	chip.Children(func() {
-		ui.Icon(c, iconBranch).Size(14, 14).TextColor(t.TextMuted).Shrink(0).PassThrough()
+		ui.Icon(c, iconBranch).Size(Controls().IconRegular, Controls().IconRegular).TextColor(t.TextMuted).Shrink(0).PassThrough()
 		ui.Text(c, name).FontSize(Typography().Body).FontWeight(WeightSemibold).TextColor(t.Text).
 			SingleLine().Ellipsis("…").Shrink(1).MinWidth(0).PassThrough()
 		if ahead > 0 {
 			ui.Text(c, "↑"+itoa(ahead)).FontSize(Typography().BodySmall).FontWeight(WeightSemibold).
 				TextColor(t.Accent).SingleLine().Shrink(0).PassThrough()
 		}
-		ui.Icon(c, iconChevronDown).Size(12, 12).TextColor(t.TextMuted).Shrink(0).PassThrough()
+		ui.Icon(c, iconChevronDown).Size(Controls().IconSmall, Controls().IconSmall).TextColor(t.TextMuted).Shrink(0).PassThrough()
 	})
 	wasOpen := s.branchMenuOpen
 	toggleMenu(&s.branchMenuOpen, chip)

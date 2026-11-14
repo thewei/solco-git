@@ -12,7 +12,7 @@ import (
 func (s *Shell) gitListHead(c *ui.Context, search *headerSearch, padX float32, summary func()) {
 	k := gorexColorsOf(c.Theme().Dark)
 	ui.Column(c).FillWidth().Shrink(0).Children(func() {
-		ui.Row(c).FillWidth().Height(32).Padding(0, padX).Gap(6).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).FillWidth().Height(sectionHeadHeight).Padding(0, padX).Gap(6).AlignItems(ui.Center).Children(func() {
 			search.button(c, k)
 			summary()
 		})

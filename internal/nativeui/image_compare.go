@@ -109,7 +109,7 @@ func (s *Shell) imageCompareView(c *ui.Context, pal *gdPalette, m *gdMedia, room
 			return
 		}
 		cw, ch, scale := compareGeometry(m.before.w, m.before.h, m.after.w, m.after.h, room, gdCompareMaxH)
-		canvas := ui.Box(c).Size(cw, ch).Border(1, pal.cardBorder).Radius(2).Background(pal.emptySide)
+		canvas := ui.Box(c).Size(cw, ch).Border(1, pal.cardBorder).Radius(Radius().Control).Background(pal.emptySide)
 		accent := t.Accent
 		mode, before, after, split, onion := st.mode, &m.before, &m.after, st.split, st.onion
 		canvas.Draw(func(p *ui.Painter, r ui.Rect) {
