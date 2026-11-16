@@ -81,6 +81,34 @@ func (s *Shell) refreshFiles() {
 	}
 }
 
+// refreshFilesQuiet re-lists every directory the tree already shows and swaps
+// each listing in when it lands. Unlike refreshFiles it drops nothing first —
+// no cache, no generation bump, no in-flight read — so the tree never blanks
+// or loses its place: the focus and the beat use it, ⌘R keeps the hard one.
+func (s *Shell) refreshFilesQuiet() {
+	st := &s.rightPanel
+	root := st.currentRoot
+	if root == "" {
+		return
+	}
+	if st.loadingDirs == nil {
+		st.loadingDirs = make(map[string]bool)
+	}
+	gen := st.filesGen.Load()
+	for dir := range st.cachedDirEntries {
+		if st.loadingDirs[dir] {
+			continue
+		}
+		if s.win == nil { // headless: synchronous, like requestDirectory
+			if entries, err := filesview.ListDirect(dir, root); err == nil && st.currentRoot == root {
+				st.cachedDirEntries[dir] = entries
+			}
+			continue
+		}
+		s.beginDirectoryLoad(dir, root, gen)
+	}
+}
+
 // requestDirectory schedules a background directory read (GWB-003): the
 // snapshot lands through guarded apply; render only ever reads cachedDirEntries.
 func (s *Shell) requestDirectory(dir string) {

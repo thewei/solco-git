@@ -189,6 +189,7 @@ func (w *Window) AttachWindow(win *mygo.Window) {
 		paths := e.Paths
 		w.onUI(func() { w.dropFolders(paths) })
 	})
+	win.OnFocus(w.onWindowFocus)
 	w.restoreWorkspaces()
 	w.finishAttach()
 	w.startPoll()
@@ -241,6 +242,18 @@ func (w *Window) activeShell() *Shell {
 		return nil
 	}
 	return w.workspaces[w.active].sh
+}
+
+// onWindowFocus runs when the window gains focus (a click, ⌘-Tab, the Dock):
+// the front workspace reads again, so what was done in a terminal meanwhile
+// shows without ⌘R. It may arrive on a native thread: the work goes through
+// the window's update lane.
+func (w *Window) onWindowFocus() {
+	w.onUI(func() {
+		if sh := w.activeShell(); sh != nil {
+			sh.refreshGitOnActivation()
+		}
+	})
 }
 
 // startPoll asks the front workspace, every few seconds, whether its Git snapshot

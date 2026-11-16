@@ -106,10 +106,19 @@ func (s *Shell) refreshGitChanges() {
 // fires OnFocus, and only a real absence of the app deserves a sync.
 const focusRefreshGap = 2 * time.Second
 
-// refreshGitOnActivation re-syncs the visible changes snapshot when the
-// window gains focus: work done outside the app must show without a
-// manual refresh, which stays as the explicit fallback — the fresh data is
-// the notification.
+// refsPollEvery is how often the beat re-reads the references (branches,
+// tags, stashes, the commit graph) on its own: a commit or a branch made in a
+// terminal shows within this long even when the window is never clicked. The
+// changes snapshot has its own, shorter cache (gitworkbench.StaleAfter).
+const refsPollEvery = 30 * time.Second
+
+// refreshGitOnActivation re-reads what the window shows when it gains focus:
+// work done outside the app (a commit, a checkout, a new file in a terminal)
+// must show without a manual refresh, which stays as the explicit fallback —
+// the fresh data is the notification. It reads the changes snapshot, the
+// references with the commit graph and, when Files is in front, the listing
+// (quietly: the tree is never emptied first). A running Git operation owns the
+// references and re-reads them itself when it ends.
 func (s *Shell) refreshGitOnActivation() {
 	if s.git == nil || s.git.root == "" {
 		return
@@ -121,7 +130,14 @@ func (s *Shell) refreshGitOnActivation() {
 	s.git.lastActivationRefresh = now
 	s.git.cache.Invalidate(s.git.root)
 	s.ensureGitSnapshot(true)
-	s.loadSequencer()
+	if s.gitBusy() {
+		s.loadSequencer()
+		return
+	}
+	s.loadBranches() // includes the sequencer probe
+	if s.currentView() == viewFiles {
+		s.refreshFilesQuiet()
+	}
 }
 
 // loadSequencer refreshes only the merge/revert/cherry-pick probe (one
@@ -158,6 +174,7 @@ func (s *Shell) loadBranches() {
 	}
 	root := s.git.root
 	s.ensureAutoFetch()
+	s.git.lastRefsPoll = timeNow()
 	s.git.branchesLoading = true
 	s.git.commitsLoading = true
 	gen := s.git.branchesGen.Add(1)

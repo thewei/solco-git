@@ -22,14 +22,23 @@ func (s *Shell) arrive() {
 }
 
 // pollGit is the front workspace's beat: the snapshot cache decides whether a
-// background refresh is due, and the Auto-fetch timer is re-armed once a
-// repository has been read.
+// background refresh is due, the references are re-read every refsPollEvery,
+// and the Auto-fetch timer is re-armed once a repository has been read.
 func (s *Shell) pollGit() {
 	if s.git == nil || s.git.root == "" {
 		return
 	}
 	s.ensureGitSnapshot(false)
 	s.ensureAutoFetch()
+	// The references and the commit graph ride the same beat, slower: the
+	// snapshot cache covers the changes, nothing else would notice a branch or
+	// a commit made in a terminal.
+	if !s.gitBusy() && !s.git.branchesLoading && timeNow().Sub(s.git.lastRefsPoll) >= refsPollEvery {
+		s.loadBranches()
+		if s.currentView() == viewFiles {
+			s.refreshFilesQuiet()
+		}
+	}
 }
 
 // commitDraftPresent reports a commit message being written: in the one

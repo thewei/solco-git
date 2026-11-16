@@ -154,6 +154,10 @@ type gitService struct {
 	// looks like an activation.
 	lastActivationRefresh time.Time
 
+	// lastRefsPoll is when the references (branches, tags, graph…) were last
+	// read, by any path; the beat re-reads them once refsPollEvery has passed.
+	lastRefsPoll time.Time
+
 	// selected file for Changes↔Diff sync with oscillation guard
 	revealPath  string
 	revealAt    time.Time

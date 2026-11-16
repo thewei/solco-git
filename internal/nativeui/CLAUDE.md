@@ -90,6 +90,7 @@ UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差�
 - `window_polish_test.go`：首读之前侧栏说 Reading references… 而不是五个 0；外部改动直接读到、没有「Files changed on disk」提示；窄卡不画 Viewed 框；提交计数按单复数（1 commit）；欢迎页的两句话各占一行。
 - `clean_state_layout_test.go`：干净工作区与有改动时文件列表栏同一 X、中心横幅在列表右侧、没有 Recent Commits / View All Commits 的独立页；领先时中心给 “Push 1 commit” 与 “↑1 ahead of origin/main”；变异（干净时丢掉列表栏）必红。
 - `ui_polish_test.go`：2026-11-16 界面打磨批次——侧栏开关 / Split / Unified 三个框形图标各不相同（Unified 不再是上下分割的框）、引用分组头带自己的图标且标题与行标题同一 X、`middlePath` 从中间收短并保留最后一级（按字符数计，不按字节）、作者列在 760–900 的中心只剩头像（名字在提示里）、设置滚动区随窗口增高（460 起，到 720）、点开提交时只有提交条的一处「Reading commit…」；每条规则做过变异检查。
+- `refresh_freshness_test.go`：2026-11-16 「窗口拿到焦点、以及开着的每个节拍里就重读」的合同——终端里新建的分支 / 提交 / 文件不必 ⌘R 就出现（`Window.onWindowFocus` → `refreshGitOnActivation`：快照 + 引用与提交图 + Files 静默重读；节拍 `pollGit` 每 `refsPollEvery`=30 s 重读引用）、两秒内的焦点来回只读一次、有 Git 操作在跑时不抢读、Files 的重读不先清空列表（不 bump `filesGen`）；每条规则做过变异检查。真实窗口的 `OnFocus` 在 `AttachWindow` 里接线。
 - `window_render_test.go`、`files_evidence_test.go`：与设计稿逐屏对照的 PNG 证据（设置 `SOLCOGIT_EVIDENCE` 才落盘）。
 - `terminal_solco_test.go`：终端归属的合同——默认是抽屉；选 In Solco 后 ⌃` / 按钮 / View 菜单项把仓库根交给 Solco 且不开抽屉；Solco 没装就说明、不悄悄退回抽屉；设置页的二选一写进偏好、菜单项与按钮随之改；去掉归属判断 / 没装时回退 / 换目录三个变异必红。
 - `terminal_drawer_test.go`：shell 在仓库根起、包装层的 pid 就是 shell 的 pid、Close / Restart 无进程直接结束有进程先问（Cancel 不动、确认才杀进程）、移除工作区有进程先问、shell 退出后显示退出码；取不到终端库时整组跳过；去掉询问 / Dir / pid 文件三个变异检查必红。
