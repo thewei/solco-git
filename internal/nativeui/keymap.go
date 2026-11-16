@@ -63,7 +63,7 @@ func repoReady(s *Shell) bool { return s.git != nil && s.git.root != "" }
 
 // keymap is the one table the keys are bound from and the `?` sheet is read
 // from. A new key is a new row here, and an action that already exists.
-var keymap = slices.Concat(keymapBase, changesKeyRows, historyKeyRows)
+var keymap = slices.Concat(keymapBase, changesKeyRows, historyKeyRows, diffKeyRows)
 
 var keymapBase = []keyAction{
 	// Anywhere a list holds the keyboard.
@@ -117,14 +117,25 @@ var keymapBase = []keyAction{
 	{ctx: keysDiff, caps: []string{"Esc"}, label: "Back to the list"},
 }
 
+// answersIn reports whether the row answers in ctx. Fetch, Pull, Push and Undo
+// stay out of the diff — a key meant for a hunk must not reach the network —
+// so only the sheet is "anywhere" there.
+func answersIn(a keyAction, ctx keyContext) bool {
+	if a.ctx == keysAny && ctx == keysDiff {
+		return a.key == ui.KeySlash
+	}
+	return a.ctx == keysAny || a.ctx == ctx
+}
+
 // keysIn lists the rows a keyboard sheet shows for ctx: its own, then the
 // ones that answer anywhere.
 func keysIn(ctx keyContext) (own, anywhere []keyAction) {
 	for _, a := range keymap {
 		switch {
+		case !answersIn(a, ctx):
 		case a.ctx == keysAny:
 			anywhere = append(anywhere, a)
-		case a.ctx == ctx:
+		default:
 			own = append(own, a)
 		}
 	}
@@ -136,7 +147,7 @@ func keysIn(ctx keyContext) (own, anywhere []keyAction) {
 // every pass — that is how a key stays claimed for the next press.
 func (s *Shell) keymapPass(el ui.Element, ctx keyContext) {
 	for _, a := range keymap {
-		if a.run == nil || (a.ctx != ctx && a.ctx != keysAny) {
+		if a.run == nil || !answersIn(a, ctx) {
 			continue
 		}
 		if el.Shortcut(a.mods, a.key) && (a.when == nil || a.when(s)) {

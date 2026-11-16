@@ -147,6 +147,7 @@ func (s *Shell) gdDiffList(c *ui.Context, pal *gdPalette) {
 	if host.Shortcut(0, ui.KeyK) {
 		s.gdNextHunk(-1)
 	}
+	s.keymapPass(host, keysDiff)
 
 	// The file at the top follows the scrolling, and the tree with it.
 	if first, _ := s.git.gdList.Visible(); first >= 0 && first < len(s.git.gdRows) && s.git.gdRows[first].kind != gdRowEnd {
