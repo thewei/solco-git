@@ -194,11 +194,15 @@ type Shell struct {
 	commitKbd commitKeyState
 	// keyBack is the list Enter took the keyboard from, for Esc to return it to;
 	// diffFocusAt is when the diff was asked to take the keyboard (keymap_nav.go).
-	keyBack        *ui.ListState
-	keyBackNow     bool
-	diffFocusAt    time.Time
-	branchMenuOpen bool
-	branchFilter   string
+	keyBack    *ui.ListState
+	keyBackNow bool
+	// keyScope is the Changes list being built while its keys are bound;
+	// keyFocusSubject hands the keyboard to the commit bar's subject once.
+	keyScope        *changesScope
+	keyFocusSubject bool
+	diffFocusAt     time.Time
+	branchMenuOpen  bool
+	branchFilter    string
 
 	// pendingToast is flushed as a toast on the next frame (background lanes
 	// cannot toast).

@@ -191,8 +191,12 @@ func (s *Shell) gitQuickCommitForm(c *ui.Context, snap *gitworkbench.ChangesSnap
 	open := s.gitQuickSubject != "" || s.gitQuickBody != "" || s.gitQuickAmend || form.FocusWithin()
 	form.Children(func() {
 		ui.Row(c).FillWidth().Gap(6).AlignItems(ui.Center).Children(func() {
-			textField(c.Key("git-quick-subject"), &s.gitQuickSubject).Grow(1).MinWidth(0).Height(Controls().RegularHeight).
+			subject := textField(c.Key("git-quick-subject"), &s.gitQuickSubject).Grow(1).MinWidth(0).Height(Controls().RegularHeight).
 				Placeholder("Commit subject").Label("Commit subject draft")
+			if s.keyFocusSubject {
+				s.keyFocusSubject = false
+				subject.Focus()
+			}
 			if !open {
 				s.gitQuickCommitActions(c, blocked)
 			}

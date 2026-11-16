@@ -7,7 +7,11 @@ package nativeui
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 
-import "github.com/egoist/mygo/ui"
+import (
+	"slices"
+
+	"github.com/egoist/mygo/ui"
+)
 
 // keyContext is the place a key answers in: the list or surface that holds the
 // keyboard focus.
@@ -59,7 +63,9 @@ func repoReady(s *Shell) bool { return s.git != nil && s.git.root != "" }
 
 // keymap is the one table the keys are bound from and the `?` sheet is read
 // from. A new key is a new row here, and an action that already exists.
-var keymap = []keyAction{
+var keymap = slices.Concat(keymapBase, changesKeyRows)
+
+var keymapBase = []keyAction{
 	// Anywhere a list holds the keyboard.
 	{ctx: keysAny, mods: 0, key: ui.KeyF, caps: []string{"F"}, label: "Fetch", when: repoReady,
 		run: func(s *Shell, _ keyContext) { s.fetchRepo() }},

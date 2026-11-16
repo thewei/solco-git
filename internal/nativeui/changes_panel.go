@@ -68,7 +68,9 @@ func (s *Shell) gdChangedTreeList(c *ui.Context, pal *gdPalette, rows []gitworkb
 	s.changesKeys(list, rows, state, selected, choice, onClick)
 	s.enterDiffFrom(list, state)
 	s.restoreListFocus(c, state)
+	s.keyScope = &changesScope{pane: pane, rows: rows, selected: *selected, choice: choice}
 	s.keymapPass(list, keysChanges)
+	s.keyScope = nil
 	return list
 }
 
