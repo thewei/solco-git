@@ -7,6 +7,17 @@ import "github.com/egoist/mygo/ui"
 // clip-art, so weight is tuned here and nowhere else.
 const iconStroke = "1.5"
 
+// The three "frame" glyphs sit side by side in the title band and the diff
+// toolbar, so each says a different thing at 16 px (2026-11-16, they were the
+// same box with a line in three places): the side panel is a box whose rail is
+// filled, Split is two equal columns, Unified is one column of two text lines
+// (three merged into a block at 16 px).
+const (
+	iconPanelShapes   = `<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="M5 4h4v16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" fill="currentColor" fill-opacity="0.3" stroke="none"/>`
+	iconSplitShapes   = `<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/>`
+	iconUnifiedShapes = `<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 10h10"/><path d="M7 14h6"/>`
+)
+
 func icon(shapes string) *ui.SVG {
 	return ui.MustParseSVG([]byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="` + iconStroke + `" stroke-linecap="round" stroke-linejoin="round">` + shapes + `</svg>`))
 }
@@ -38,7 +49,7 @@ var (
 	iconServer       = icon(`<rect x="3" y="3" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><path d="M7 6.5h.01"/><path d="M7 17.5h.01"/>`)
 	iconLaptop       = icon(`<path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16"/>`)
 	iconRefresh      = icon(`<path d="M20 11a8 8 0 0 0-14.8-4L3 10"/><path d="M3 4v6h6"/><path d="M4 13a8 8 0 0 0 14.8 4L21 14"/><path d="M21 20v-6h-6"/>`)
-	iconSplit        = icon(`<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/>`)
+	iconSplit        = icon(iconSplitShapes)
 	iconSplitDown    = icon(`<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 12h18"/>`)
 	iconZoom         = icon(`<path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/>`)
 	iconArrowLeft    = icon(`<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>`)
@@ -70,9 +81,9 @@ var (
 	iconPull  = icon(`<path d="M12 17V3"/><path d="m6 11 6 6 6-6"/><path d="M19 21H5"/>`)
 	iconPush  = icon(`<path d="m18 9-6-6-6 6"/><path d="M12 3v14"/><path d="M5 21h14"/>`)
 	iconTask  = icon(`<rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 2.5 2.5L16 9"/>`)
-	iconPanel = icon(`<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>`)
+	iconPanel = icon(iconPanelShapes)
 	// iconPanelRight is iconPanel mirrored: the title bar's right-panel toggle.
-	iconPanelRight = icon(`<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>`)
+	iconPanelRight = icon(`<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/><path d="M15 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4Z" fill="currentColor" fill-opacity="0.3" stroke="none"/>`)
 	iconMinus      = icon(`<path d="M5 12h14"/>`)
 	iconSquare     = icon(`<rect width="18" height="18" x="3" y="3" rx="2"/>`)
 	// iconPlay runs the pane header's project command control: the Lucide

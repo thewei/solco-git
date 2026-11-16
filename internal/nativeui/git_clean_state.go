@@ -1,161 +1,85 @@
 package nativeui
 
 import (
-	"time"
+	"strings"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/thewei/solco-gitkit/gitworkbench"
 )
 
-// cleanStateRecent is how many recent commits the clean page lists.
-const cleanStateRecent = 3
-
-// headCommits lists up to n commits of HEAD's first-parent line, newest
-// first, from the loaded commit graph (which spans every branch). It stops
-// where the loaded window ends.
-func headCommits(commits []gitworkbench.CommitInfo, head string, n int) []gitworkbench.CommitInfo {
-	byHash := make(map[string]gitworkbench.CommitInfo, len(commits))
-	for _, cm := range commits {
-		byHash[cm.Hash] = cm
+// gitCleanState is the center of the Changes view on a clean worktree: not a
+// page of its own but the empty-diff banner every other empty review uses
+// (2026-11-16), saying so and where the branch stands against its upstream,
+// with the one action that follows (Push when ahead, Pull when behind, Merge
+// when diverged, Publish without an upstream, else Fetch). The file list
+// column beside it keeps its place; the latest commits are the Commits view's.
+func (s *Shell) gitCleanState(c *ui.Context, title string) {
+	where := s.currentBranchName()
+	if where == "" {
+		where = gdAbbreviateHome(s.git.root)
 	}
-	var out []gitworkbench.CommitInfo
-	for hash := head; len(out) < n; {
-		cm, ok := byHash[hash]
-		if !ok {
-			break
-		}
-		out = append(out, cm)
-		if len(cm.Parents) == 0 {
-			break
-		}
-		hash = cm.Parents[0]
-	}
-	return out
+	s.gdEmptyPanel(c, nil, title, upstreamSummary(where, s.git.upstream), s.cleanStateAction(c))
 }
 
-// gitCleanState is the Changes view of a clean worktree: say so, say where
-// the branch stands against its upstream with the one action that follows
-// (Push when ahead, Pull when behind, else Fetch), and list the latest
-// commits — the unpushed ones marked.
-func (s *Shell) gitCleanState(c *ui.Context, title, detail string) {
-	t := c.Theme()
-	pal := gdPaletteFor(t)
-	sp := Spacing()
-	snap := s.gitSnapshot()
-	st := s.git.upstream
+// cleanStateAction draws the clean banner's one button; nil on a detached HEAD,
+// where no branch has an upstream to speak of.
+func (s *Shell) cleanStateAction(c *ui.Context) func() {
 	branch := s.currentBranchName()
+	if branch == "" {
+		return nil
+	}
+	st := s.git.upstream
 	busy := s.git.opBusy || s.git.sequencerChecked && s.git.sequencer.Active()
-
-	ui.Column(c).Grow(1).MinWidth(0).Padding(sp.XL).Children(func() {
-		ui.Column(c).FillWidth().MaxWidth(640).Gap(sp.L).Children(func() {
-			ui.Row(c).FillWidth().Gap(sp.L).AlignItems(ui.Center).Wrap().Children(func() {
-				ui.Icon(c, iconCheck).Size(18, 18).TextColor(pal.addText).Shrink(0)
-				ui.Column(c).Grow(1).Basis(200).MinWidth(0).Gap(sp.XS).Children(func() {
-					ui.Text(c, title).FontSize(Typography().Section).FontWeight(WeightSemibold)
-					ui.Row(c).Gap(sp.M).AlignItems(ui.Center).Wrap().Children(func() {
-						if branch != "" {
-							ui.Text(c, branch).FontSize(Typography().BodySmall).TextColor(t.TextMuted)
-						} else if detail != "" {
-							ui.Text(c, detail).FontSize(Typography().BodySmall).TextColor(t.TextMuted)
-						}
-						s.upstreamChips(c, st, pal)
-					})
-				})
-				if branch != "" {
-					switch {
-					case st.Diverged():
-						// Push is refused for sure and a fast-forward pull too:
-						// the one way forward is to bring the remote's work in.
-						if compactPrimaryButton(c, "Merge "+st.Remote+"/"+st.Branch+"…").Disabled(busy).Clicked() {
-							s.openMergeDialog(st.Remote + "/" + st.Branch)
-						}
-					case !st.OK:
-						if compactPrimaryButton(c, "Publish Branch").Disabled(busy).Clicked() {
-							s.pushRepo()
-						}
-					case st.Ahead > 0:
-						if compactPrimaryButton(c, "Push "+itoa(st.Ahead)+" commit"+pluralS(st.Ahead)).Disabled(busy).Clicked() {
-							s.pushRepo()
-						}
-					case st.Behind > 0:
-						if compactPrimaryButton(c, "Pull "+itoa(st.Behind)+" commit"+pluralS(st.Behind)).Disabled(busy).Clicked() {
-							s.pullRepo()
-						}
-					default:
-						if compactButton(c, "Fetch").Disabled(busy).Clicked() {
-							s.fetchRepo()
-						}
-					}
-				}
-			})
-
-			if snap != nil {
-				if recent := headCommits(s.git.commits, snap.Head, cleanStateRecent); len(recent) > 0 {
-					s.cleanStateCommits(c, recent, st.Ahead)
-				}
+	return func() {
+		switch {
+		case st.Diverged():
+			// Push is refused for sure and a fast-forward pull too: the one
+			// way forward is to bring the remote's work in.
+			if compactPrimaryButton(c, "Merge "+st.Remote+"/"+st.Branch+"…").Disabled(busy).Clicked() {
+				s.openMergeDialog(st.Remote + "/" + st.Branch)
 			}
-			ui.Row(c).Gap(sp.S).Children(func() {
-				if compactButton(c, "View All Commits").Clicked() {
-					s.showGitCommits()
-				}
-			})
-		})
-	})
+		case !st.OK:
+			if compactPrimaryButton(c, "Publish Branch").Disabled(busy).Clicked() {
+				s.pushRepo()
+			}
+		case st.Ahead > 0:
+			if compactPrimaryButton(c, "Push "+itoa(st.Ahead)+" commit"+pluralS(st.Ahead)).Disabled(busy).Clicked() {
+				s.pushRepo()
+			}
+		case st.Behind > 0:
+			if compactPrimaryButton(c, "Pull "+itoa(st.Behind)+" commit"+pluralS(st.Behind)).Disabled(busy).Clicked() {
+				s.pullRepo()
+			}
+		default:
+			if compactButton(c, "Fetch").Disabled(busy).Clicked() {
+				s.fetchRepo()
+			}
+		}
+	}
 }
 
-// upstreamChips says where the branch stands against its upstream: ahead,
-// behind, or nothing to say when level.
-func (s *Shell) upstreamChips(c *ui.Context, st gitworkbench.UpstreamStatus, pal *gdPalette) {
-	t := c.Theme()
+// upstreamSummary says where a branch stands against its upstream in one
+// line: ahead, behind, level, or without one.
+func upstreamSummary(where string, st gitworkbench.UpstreamStatus) string {
+	var parts []string
+	if where != "" {
+		parts = append(parts, where)
+	}
 	switch {
 	case !st.OK:
-		ui.Text(c, "No upstream").FontSize(Typography().BodySmall).TextColor(t.TextMuted)
+		parts = append(parts, "No upstream")
 	case st.Ahead == 0 && st.Behind == 0:
-		ui.Text(c, "Up to date with "+st.Remote+"/"+st.Branch).FontSize(Typography().BodySmall).TextColor(t.TextMuted)
+		parts = append(parts, "Up to date with "+st.Remote+"/"+st.Branch)
 	default:
 		if st.Ahead > 0 {
-			ui.Text(c, "↑"+itoa(st.Ahead)+" ahead of "+st.Remote+"/"+st.Branch).FontSize(Typography().BodySmall).
-				FontWeight(WeightSemibold).TextColor(pal.addText)
+			parts = append(parts, "↑"+itoa(st.Ahead)+" ahead of "+st.Remote+"/"+st.Branch)
 		}
 		if st.Behind > 0 {
-			ui.Text(c, "↓"+itoa(st.Behind)+" behind").FontSize(Typography().BodySmall).
-				FontWeight(WeightSemibold).TextColor(pal.delText)
+			parts = append(parts, "↓"+itoa(st.Behind)+" behind")
 		}
 		if st.Diverged() {
-			ui.Text(c, "Diverged — merge or rebase before pushing").FontSize(Typography().BodySmall).TextColor(t.TextMuted)
+			parts = append(parts, "Diverged — merge or rebase before pushing")
 		}
 	}
-}
-
-// cleanStateCommits lists the latest commits of HEAD, the first `ahead` of
-// them marked unpushed.
-func (s *Shell) cleanStateCommits(c *ui.Context, recent []gitworkbench.CommitInfo, ahead int) {
-	t := c.Theme()
-	tokens := designTokens(t.Dark)
-	sp := Spacing()
-	now := time.Now()
-	ui.Column(c).FillWidth().Gap(sp.XS).Children(func() {
-		ui.Text(c, "Recent Commits").FontSize(Typography().Caption).FontWeight(WeightSemibold).TextColor(t.TextMuted).
-			Padding(0, 0, sp.XS)
-		for i, cm := range recent {
-			ui.Row(c).FillWidth().Height(Controls().RegularHeight).Gap(sp.L).AlignItems(ui.Center).
-				BorderWidth(0, 0, boolPx(i < len(recent)-1), 0).BorderColor(tokens.BorderSubtle).Children(func() {
-				ui.Text(c, cm.Short).Font(gdCodeFont()).FontSize(Typography().Caption).TextColor(t.TextMuted).Shrink(0).SingleLine()
-				tipped(c, ui.Text(c, cm.Subject).FontSize(Typography().Body).SingleLine().Ellipsis("…").Grow(1).MinWidth(0), cm.Subject)
-				age := agentAgo(cm.Time, now)
-				if i < ahead {
-					age += " · unpushed"
-				}
-				ui.Text(c, age).FontSize(Typography().Caption).TextColor(t.TextMuted).Shrink(0).SingleLine()
-			})
-		}
-	})
-}
-
-// boolPx is a 1-point rule when on, none when off.
-func boolPx(on bool) float32 {
-	if on {
-		return 1
-	}
-	return 0
+	return strings.Join(parts, " · ")
 }

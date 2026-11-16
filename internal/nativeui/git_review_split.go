@@ -61,11 +61,10 @@ func (s *Shell) gitSplitReviewSurface(c *ui.Context) {
 
 func (s *Shell) gitLocalChangesReview(c *ui.Context) {
 	ui.Row(c).Grow(1).MinHeight(0).MinWidth(0).AlignItems(ui.Stretch).Children(func() {
-		// A clean worktree has no files to navigate: the column would be a
-		// "0 files" strip beside the status page.
-		if snap := s.gitSnapshot(); snap == nil || len(snap.Files) > 0 {
-			s.gitFileNavigationColumn(c, func() { s.sidebarFilesView(c) })
-		}
+		// A clean worktree is this same view with nothing in it: the column
+		// stays, its sections empty, and the center says "Working tree clean"
+		// (2026-11-16; it used to drop the column for a page of its own).
+		s.gitFileNavigationColumn(c, func() { s.sidebarFilesView(c) })
 		ui.Column(c).Grow(1).MinHeight(0).MinWidth(0).Children(func() {
 			ui.Column(c).Grow(1).MinHeight(0).MinWidth(0).Children(func() {
 				s.gdDiffSurface(c)
@@ -346,8 +345,7 @@ func (s *Shell) gitCommitFiles(c *ui.Context) {
 			s.changesSummary(c, snap)
 		})
 		if snap == nil {
-			ui.Column(c).Grow(1).Center().Children(func() { ui.Spinner(c).Size(15, 15) })
-			return
+			return // the commit strip is the one place that says it is reading
 		}
 		rows := gitworkbench.Flatten(gitworkbench.FilterTree(
 			gitworkbench.BuildTree(snap.Files, true), s.gitCommitFilesFilter), s.git.collapsedDirs)

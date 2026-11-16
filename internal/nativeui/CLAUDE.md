@@ -36,6 +36,7 @@ Git（复制自 Solco，随 `solco-gitkit` 演进）
 - `git_courier_ui.go`：Change Courier 界面（2026-11-12 决定第 (13) 条）：Send to Worktree 面板——来源是 Changes 的文件菜单（整文件）、已选行 hunk 行上的 Send…、提交审阅 Custom Patch 条上的 Send…；目标是同一仓库的其它 worktree（单选列表，换目标即对新目标重新预检，旧答案作废）；预检不干净时给 Git 的原话且 Send 不可点；Move 复选框：成功后从源丢弃（工作区整文件 / 暂存之外的行 / 提交里 Remove），有暂存的文件或行不提供并说明；补丁面板打开时一次做好，预检与送达用同一份文本。
 - `gd_moved_test.go` / `gd_diffstat.go` / `git_stash_lines_ui.go` / `git_commit_filter_ui.go`：2026-11-12 决定第 (14) 条的四项界面——移动行高亮（`gdLineCell` 用移动色而非增删色、悬停提示 “Moved to / from line N”，结果按 `gdFile` 记住、随 `resetDerived` 清空；View 菜单 “Highlight Moved Lines” 开关，默认开，设置里存反向的 `hide_moved_lines`）、文件行上 +N −N 旁的五格比例条（`gdStatBlocks`：有新增必有绿、有删除必有红、同数同格）、行级 stash（hunk 行上的 “Stash N Lines…”，N 是该文件里选中的全部行；问一句预填的说明；已暂存 / 未跟踪 / 暂存侧不可用并说明原因；对话框开着时仓库换了就拒）、提交过滤（列表头的 Filters 弹层：Path / Since / Until / Current branch only，点 Apply 才由 Git 查，结果在 `cfilter.commits`；文字搜索在其内再筛；筛选中的列表只画圆点；仓库刷新时重查，换仓库与 reveal 时清除）。
 - `commit_tree.go`：Fork 的 File Tree——提交评审里 Diff | Tree 切换，按提交看整棵树（读 `ListTree`/`ReadBlob`，只读）。
+- `git_clean_state.go`：干净工作区的中心（2026-11-16 用户定：Changes 的空状态与有改动时同一套布局，不再是另起一页）——文件列表栏照常在、两个分区（Unstaged / Staged）为空各带一行淡字，中心是所有空 diff 共用的 `gdEmptyPanel` 横幅：“Working tree clean” + 分支与上游一句话（`upstreamSummary`）+ 紧随其后的那一个动作（Push / Pull / Merge… / Publish Branch / Fetch）；原来的 Recent Commits 与 View All Commits 归 Commits 视图。
 - `multi_push.go`：Push Multiple…——一次推多个分支与标签（`ReadPushOffer`/`PushMany`），分叉的标为受阻，永不强推。
 - `image_compare.go`：图片改动的 2-up / Swipe / Onion 对比，画在已解码位图上。
 
@@ -87,6 +88,8 @@ UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差�
 - `window_workspaces_test.go`：工作区下拉与管理的合同——chip 始终是当前工作区；搜索（过滤、↑↓、↵ 切换并刷新、无命中时 ↵ 什么也不做）、最大高度与滚动、行右键移除、设置里的排序/移除/Add Workspace…（添加不抢前台）、下拉与设置里的行都能拖到另一行的位置（`dragWorkspaceRow`/`dropWorkspace`；新切片不原地改，正在遍历的视图不会见到同一工作区两次；前台工作区不变）、每一种打开方式都加入清单、旧版 `tabs` 键读成工作区、清单上限、共享图标按钮是 Tab 停靠点。
 - `window_landing_test.go`：冷启动经链接落点——首读之后列表顶上是被点名文件的卡，内容分批读到后也不动，过了揭示窗口选中行仍是它。
 - `window_polish_test.go`：首读之前侧栏说 Reading references… 而不是五个 0；外部改动直接读到、没有「Files changed on disk」提示；窄卡不画 Viewed 框；提交计数按单复数（1 commit）；欢迎页的两句话各占一行。
+- `clean_state_layout_test.go`：干净工作区与有改动时文件列表栏同一 X、中心横幅在列表右侧、没有 Recent Commits / View All Commits 的独立页；领先时中心给 “Push 1 commit” 与 “↑1 ahead of origin/main”；变异（干净时丢掉列表栏）必红。
+- `ui_polish_test.go`：2026-11-16 界面打磨批次——侧栏开关 / Split / Unified 三个框形图标各不相同（Unified 不再是上下分割的框）、引用分组头带自己的图标且标题与行标题同一 X、`middlePath` 从中间收短并保留最后一级（按字符数计，不按字节）、作者列在 760–900 的中心只剩头像（名字在提示里）、设置滚动区随窗口增高（460 起，到 720）、点开提交时只有提交条的一处「Reading commit…」；每条规则做过变异检查。
 - `window_render_test.go`、`files_evidence_test.go`：与设计稿逐屏对照的 PNG 证据（设置 `SOLCOGIT_EVIDENCE` 才落盘）。
 - `terminal_solco_test.go`：终端归属的合同——默认是抽屉；选 In Solco 后 ⌃` / 按钮 / View 菜单项把仓库根交给 Solco 且不开抽屉；Solco 没装就说明、不悄悄退回抽屉；设置页的二选一写进偏好、菜单项与按钮随之改；去掉归属判断 / 没装时回退 / 换目录三个变异必红。
 - `terminal_drawer_test.go`：shell 在仓库根起、包装层的 pid 就是 shell 的 pid、Close / Restart 无进程直接结束有进程先问（Cancel 不动、确认才杀进程）、移除工作区有进程先问、shell 退出后显示退出码；取不到终端库时整组跳过；去掉询问 / Dir / pid 文件三个变异检查必红。

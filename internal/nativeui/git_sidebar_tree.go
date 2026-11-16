@@ -295,7 +295,7 @@ func (s *Shell) gitSidebarSection(c *ui.Context, name string, count int, action 
 	// An empty section is its header and the 0: opening it only to read
 	// "None" cost a row per Remotes/Tags/Stashes.
 	closed := s.gitFolded(key) || (count == 0 && strings.TrimSpace(s.gitRefsFilter) == "")
-	spec := sidebarSectionSpec{Key: "git-section:" + name, Title: name, Count: count, Closed: closed, Nav: &s.nav.gitRefs}
+	spec := sidebarSectionSpec{Key: "git-section:" + name, Title: name, Count: count, Closed: closed, Nav: &s.nav.gitRefs, Glyph: gitSectionGlyph(name)}
 	if action != nil {
 		if !action.disabled {
 			spec.Action = &treeRowAction{Label: action.label, Tooltip: action.menuItem, Glyph: iconPlus, Run: action.run}
@@ -326,4 +326,24 @@ func gitWorktreeLabel(wt gitworkbench.Worktree) string {
 		return "(detached)"
 	}
 	return wt.Branch
+}
+
+// gitSectionGlyph is the icon of a reference group: the one its rows wear, so
+// Local and Remote read apart at a glance (2026-11-16).
+func gitSectionGlyph(name string) *ui.SVG {
+	switch name {
+	case "Worktrees":
+		return iconWorktree
+	case "Branches":
+		return iconBranch
+	case "Remotes":
+		return iconCloud
+	case "Tags":
+		return iconTag
+	case "Stashes":
+		return iconStash
+	case "Submodules":
+		return iconGit
+	}
+	return nil
 }

@@ -231,8 +231,8 @@ func (w *Window) quickRow(c *ui.Context, k *gorexColors, item quickItem, query s
 	tokens := designTokens(t.Dark)
 	var row ui.Element
 	ui.Box(c).Children(func() {
-		row = ui.ButtonBase(c.Key(scope+":"+item.Path)).FillWidth().Height(32).Radius(Radius().Row).
-			Padding(0, 10).Gap(8).AlignItems(ui.Center).Label(item.Name)
+		row = tipped(c, ui.ButtonBase(c.Key(scope+":"+item.Path)).FillWidth().Height(32).Radius(Radius().Row).
+			Padding(0, 10).Gap(8).AlignItems(ui.Center).Label(item.Name), tildePath(item.Path))
 		if tint, ok := rowTint(tokens, selected, row.Hovered()); ok {
 			row.Background(tint)
 		}
@@ -251,7 +251,7 @@ func (w *Window) quickRow(c *ui.Context, k *gorexColors, item quickItem, query s
 					ui.Text(c, post).FontSize(Typography().Section).SingleLine().PassThrough()
 				}
 			})
-			detail := tildePath(item.Path)
+			detail := middlePath(tildePath(item.Path), recentPathMax)
 			if item.Branch != "" {
 				detail += " · " + item.Branch
 			}

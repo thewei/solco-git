@@ -345,7 +345,7 @@ func (w *Window) workspaceManageFace(c *ui.Context, k *gorexColors, i int, ws *w
 	id := ws.id
 	formRowLead(c, func() {
 		ui.Icon(c, iconFolder).Size(Controls().IconRegular, Controls().IconRegular).TextColor(t.TextMuted).Shrink(0)
-	}, label, tildePath(ws.sh.dir), func() {
+	}, label, middlePath(tildePath(ws.sh.dir), recentPathMax), func() {
 		ui.Row(c.Key("workspace-row:" + itoa(id))).Gap(2).Shrink(0).AlignItems(ui.Center).Children(func() {
 			up := gorexIconButton(c, k, iconArrowUp, "Move "+label+" up", "Move Up", false, gorexRowBtn, gorexRowGlyph)
 			down := gorexIconButton(c, k, iconArrowDown, "Move "+label+" down", "Move Down", false, gorexRowBtn, gorexRowGlyph)

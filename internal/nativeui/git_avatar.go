@@ -44,11 +44,14 @@ func authorAvatar(c *ui.Context, name string, size float32) {
 // same numbers, so a label always sits over its values.
 const (
 	commitAuthorColW float32 = 90
-	commitHashColW   float32 = 64
-	commitDateColW   float32 = 62
-	commitAvatarSize float32 = 16
-	commitRowGap     float32 = 8
-	commitRowInset   float32 = 16 // list padding 8 + row padding 8
+	// commitAuthorWideW is the author column of a wide center, where a full
+	// name fits.
+	commitAuthorWideW float32 = 140
+	commitHashColW    float32 = 64
+	commitDateColW    float32 = 62
+	commitAvatarSize  float32 = 16
+	commitRowGap      float32 = 8
+	commitRowInset    float32 = 16 // list padding 8 + row padding 8
 )
 
 // gitCommitColumnHead labels the list's columns. The author and date columns

@@ -238,6 +238,9 @@ type sidebarSectionSpec struct {
 	Title  string
 	Count  int
 	Closed bool
+	// Glyph is the group's icon, the one its rows wear, drawn where a row's
+	// glyph is so the title lines up with the rows' titles; nil for none.
+	Glyph *ui.SVG
 	// Tooltip is the full text of a clipped title (a file group's path).
 	Tooltip string
 	// Action is the header's one hover icon (a "+"); it takes the count's
@@ -277,6 +280,10 @@ func (s *Shell) sidebarSectionHeader(c *ui.Context, spec sidebarSectionSpec) (ui
 	row.Children(func() {
 		treeChevron(c, true, !spec.Closed, t.TextMuted)
 		ui.Box(c).Width(treeGlyphGap).Shrink(0).PassThrough()
+		if spec.Glyph != nil {
+			ui.Icon(c, spec.Glyph).FontSize(treeGlyphW).TextColor(t.TextMuted).Shrink(0)
+			ui.Box(c).Width(treeTitleGap).Shrink(0).PassThrough()
+		}
 		ui.Text(c, spec.Title).FontSize(Typography().Body).FontWeight(WeightSemibold).Grow(1).MinWidth(0).SingleLine()
 		// A non-zero count is a small pill so the header reads as the level
 		// above its rows; a zero is not drawn (2026-11-14 UX pass).

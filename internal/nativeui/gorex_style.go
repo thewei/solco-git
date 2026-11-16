@@ -226,3 +226,34 @@ func tildePath(path string) string {
 	}
 	return path
 }
+
+// middlePath shortens a long path from its middle, keeping the first folder
+// and as many of the last ones as fit in max characters: the end of a path is
+// what tells two repositories of the same name apart, and a line that simply
+// clips at its right edge loses exactly that (2026-11-16). The result is only
+// a display form; a path that fits, or has nothing in the middle, is returned
+// as it is.
+func middlePath(path string, max int) string {
+	if len([]rune(path)) <= max {
+		return path
+	}
+	parts := strings.Split(path, "/")
+	head, rest := parts[0], parts[1:]
+	if head == "" && len(parts) > 1 { // an absolute path keeps its first folder
+		head, rest = "/"+parts[1], parts[2:]
+	}
+	if len(rest) < 3 {
+		return path
+	}
+	// Take folders from the end while the whole still fits; the last one is
+	// always kept, however long.
+	take := 1
+	for take < len(rest)-1 {
+		next := strings.Join(rest[len(rest)-take-1:], "/")
+		if len([]rune(head))+3+len([]rune(next)) > max { // 3 = "/…/", in characters
+			break
+		}
+		take++
+	}
+	return head + "/…/" + strings.Join(rest[len(rest)-take:], "/")
+}

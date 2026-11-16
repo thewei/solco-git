@@ -58,14 +58,17 @@ func (s *Shell) gdDiffSurface(c *ui.Context) {
 	}
 
 	if s.gdReviewingCommit() && s.git.commitSnap == nil {
-		s.gdThinking(c)
+		// The commit strip above already says "Reading commit…" with the one
+		// spinner; a second "Loading changes…" and a third in the file column
+		// made a plain click look like three things loading (2026-11-16).
+		ui.Column(c).Grow(1).MinHeight(0)
 		return
 	}
 	// The Git tools live in the title bar (gitHeaderTools), so the diff opens
 	// straight with its content, and they stay on an otherwise clean worktree.
 	if len(s.git.gdFiles) == 0 {
 		if !s.gdReviewingCommit() {
-			s.gitCleanState(c, "Working tree clean", gdAbbreviateHome(s.git.root))
+			s.gitCleanState(c, "Working tree clean")
 			return
 		}
 		s.gdEmptyPanel(c, pal, "No changes in commit", s.git.commitHash, nil)

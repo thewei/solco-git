@@ -32,7 +32,12 @@ func (w *Window) settingsSheet(c *ui.Context) {
 	ui.Modal(c, &w.settingsOpen, func() {
 		ui.Column(c).Width(520).MaxWidth(560).Gap(Spacing().L).Children(func() {
 			modalTitle(c, "Settings")
-			ui.Scroll(c).FillWidth().MaxHeight(460).Children(func() {
+			// The list is as tall as the window allows (460 at least, as it was
+			// for every window), and a hairline under it says a row cut by the
+			// edge goes on rather than looking clipped by mistake (2026-11-16).
+			_, windowH := c.Size()
+			ui.Scroll(c).FillWidth().MaxHeight(clampF(windowH-180, 460, 720)).
+				BorderWidth(0, 0, 1, 0).BorderColor(designTokens(c.Theme().Dark).BorderSubtle).Children(func() {
 				ui.Column(c).FillWidth().Gap(Spacing().L).Children(func() {
 					w.workspacesGroup(c)
 					settingsGroup(c, "Appearance",

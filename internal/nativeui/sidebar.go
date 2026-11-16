@@ -44,9 +44,11 @@ func (s *Shell) sidebarFilesView(c *ui.Context) {
 			return
 		}
 
-		// A clean tree: the center's "Working tree clean" says it once; two
-		// empty Unstaged/Staged headers would say it again.
+		// A clean tree keeps both sections, empty: the layout does not change
+		// because there is nothing to act on, the center says "Working tree
+		// clean" (2026-11-16).
 		if len(snap.Files) == 0 {
+			s.cleanSections(c)
 			return
 		}
 		unstagedFiles, stagedFiles := s.splitSections(snap)
@@ -97,7 +99,11 @@ func (s *Shell) sidebarFilesView(c *ui.Context) {
 // then its age column.
 const (
 	gitCommitsShowAuthor float32 = 760
-	gitCommitsShowAge    float32 = 600
+	// gitCommitsShowAuthorName is the width from which the author's name
+	// shows beside the avatar; gitCommitsAuthorWide gives a long name more.
+	gitCommitsShowAuthorName float32 = 900
+	gitCommitsAuthorWide     float32 = 1100
+	gitCommitsShowAge        float32 = 600
 )
 
 // commitsPane is the Commits pane: the history of HEAD, filtered by the
@@ -157,7 +163,9 @@ func (s *Shell) commitsPane(c *ui.Context, pal *gdPalette) {
 		// the row's pitch, and rows must tile edge to edge for the lane
 		// wires to run unbroken (the compact All Commits list, 2026-10-14).
 		row := ui.Row(c).Gap(commitRowGap).Padding(0, 8).Radius(treeRowRadius).AlignItems(ui.Center).MinWidth(0)
-		muted, ref := t.TextMuted, pal.ref
+		// The hash is a quiet monospace: orange already means the checked-out
+		// branch's chip, and one colour should not say both (2026-11-16).
+		muted, ref := t.TextMuted, t.TextMuted
 		// halo is the row's own paper, wash included: the graph rings its
 		// dot and its lines with it.
 		halo := t.Background
@@ -276,9 +284,21 @@ func (s *Shell) commitsPane(c *ui.Context, pal *gdPalette) {
 			}
 			// Author and age give way first when the center is narrow.
 			if centerW >= gitCommitsShowAuthor {
-				ui.Row(c).Width(commitAuthorColW).Shrink(0).Gap(5).AlignItems(ui.Center).Children(func() {
+				// Below gitCommitsShowAuthorName the column is the avatar alone
+				// (the name in its tip) instead of a clipped "Ada Lovela…".
+				named := centerW >= gitCommitsShowAuthorName
+				authorW := commitAuthorColW
+				switch {
+				case !named:
+					authorW = commitAvatarSize
+				case centerW >= gitCommitsAuthorWide:
+					authorW = commitAuthorWideW
+				}
+				tipped(c, ui.Row(c).Width(authorW).Shrink(0).Gap(5).AlignItems(ui.Center), cm.Author).Children(func() {
 					authorAvatar(c, cm.Author, commitAvatarSize)
-					ui.Text(c, cm.Author).FontSize(Typography().BodySmall).TextColor(muted).Grow(1).MinWidth(0).SingleLine()
+					if named {
+						ui.Text(c, cm.Author).FontSize(Typography().BodySmall).TextColor(muted).Grow(1).MinWidth(0).SingleLine()
+					}
 				})
 			}
 			ui.Text(c, cm.Short).Font(gdCodeFont()).FontSize(Typography().BodySmall).TextColor(ref).Width(commitHashColW).SingleLine()
@@ -470,6 +490,10 @@ func (s *Shell) changesSummary(c *ui.Context, snap *gitworkbench.ChangesSnapshot
 	}
 	t := c.Theme()
 	pal := gdPaletteFor(t)
+	if len(snap.Files) == 0 {
+		ui.Text(c, "No changes").FontSize(Typography().BodySmall).TextColor(t.TextMuted).SingleLine()
+		return
+	}
 	ui.Text(c, pluralFiles(len(snap.Files))).FontSize(Typography().BodySmall).TextColor(t.TextMuted).SingleLine()
 	tipped(c, ui.Row(c).Gap(6).Shrink(0), "Total change: "+gdLines(snap.TotalAdditions, "added")+", "+gdLines(snap.TotalDeletions, "removed")).Children(func() {
 		if snap.TotalAdditions > 0 {
@@ -481,5 +505,22 @@ func (s *Shell) changesSummary(c *ui.Context, snap *gitworkbench.ChangesSnapshot
 	})
 	if snap.Truncated {
 		ui.Text(c, "partial").FontSize(Typography().Micro).TextColor(t.TextMuted)
+	}
+}
+
+// cleanSections are the two sections of a clean worktree: their headers as
+// they are with changes, each with a muted line where the rows would be.
+func (s *Shell) cleanSections(c *ui.Context) {
+	t := c.Theme()
+	note := func(text string) {
+		ui.Text(c, text).FontSize(Typography().BodySmall).TextColor(t.TextMuted).Padding(2, treeRowPad+22, 8)
+	}
+	s.gdSectionHeader(c, "Unstaged Files", 0, &s.unstagedOpen, "", nil, nil)
+	if s.unstagedOpen {
+		note("Nothing to stage")
+	}
+	s.gdSectionHeader(c, "Staged Files", 0, &s.stagedOpen, "", nil, nil)
+	if s.stagedOpen {
+		note("Nothing staged")
 	}
 }

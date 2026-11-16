@@ -76,15 +76,15 @@ func (w *Window) recentCard(c *ui.Context) {
 			Padding(8, 14).FillWidth()
 		for _, root := range recent {
 			ui.Box(c).FillWidth().Height(1).Shrink(0).Background(tokens.BorderSubtle)
-			row := ui.ButtonBase(c.Key("recent:"+root)).FillWidth().Height(44).Padding(0, 14).Gap(10).
-				AlignItems(ui.Center).Label(pathBase(root))
+			row := tipped(c, ui.ButtonBase(c.Key("recent:"+root)).FillWidth().Height(44).Padding(0, 14).Gap(10).
+				AlignItems(ui.Center).Label(pathBase(root)), tildePath(root))
 			if tint, ok := rowTint(tokens, false, row.Hovered()); ok {
 				row.Background(tint)
 			}
 			row.Children(func() {
 				ui.Icon(c, iconFolder).Size(Controls().IconRegular, Controls().IconRegular).TextColor(t.TextMuted).Shrink(0).PassThrough()
 				ui.Text(c, pathBase(root)).FontWeight(WeightSemibold).SingleLine().Shrink(0).PassThrough()
-				ui.Text(c, tildePath(root)).FontSize(Typography().BodySmall).TextColor(t.TextMuted).SingleLine().
+				ui.Text(c, middlePath(tildePath(root), recentPathMax)).FontSize(Typography().BodySmall).TextColor(t.TextMuted).SingleLine().
 					Ellipsis("…").Grow(1).MinWidth(0).PassThrough()
 				if branch := w.recentBranch[root]; branch != "" {
 					ui.Icon(c, iconBranch).Size(Controls().IconSmall, Controls().IconSmall).TextColor(t.TextMuted).Shrink(0).PassThrough()
@@ -160,3 +160,7 @@ func (w *Window) dropFolders(paths []string) {
 		w.OpenRepository(path, "", "")
 	}
 }
+
+// recentPathMax is how many characters of a repository's path its row shows
+// before the middle gives way (middlePath).
+const recentPathMax = 46
