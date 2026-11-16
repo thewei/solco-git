@@ -28,7 +28,7 @@ func (s *Shell) filesToolView(c *ui.Context) {
 			return
 		}
 		ui.Scroll(c).Grow(1).MinHeight(0).Children(func() {
-			s.navList(c, &s.nav.files, true, ui.Column(c).FillWidth().Padding(4, sidebarGutter, 12), func() {
+			s.navList(c, &s.nav.files, keysFiles, true, ui.Column(c).FillWidth().Padding(4, sidebarGutter, 12), func() {
 				if s.filesGit.changedOnly {
 					s.renderChangedTree(c, s.filesChangeMarks().tree, 0)
 					return

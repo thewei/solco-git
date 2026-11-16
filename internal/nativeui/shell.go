@@ -10,6 +10,7 @@ package nativeui
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
@@ -189,8 +190,15 @@ type Shell struct {
 	// patch is the Custom Patch choice on the commit under review (git_patch_ui.go).
 	patch           patchSelection
 	commitsSelected int
-	branchMenuOpen  bool
-	branchFilter    string
+	// commitKbd is the Commits list's keyboard cursor (keymap_nav.go).
+	commitKbd commitKeyState
+	// keyBack is the list Enter took the keyboard from, for Esc to return it to;
+	// diffFocusAt is when the diff was asked to take the keyboard (keymap_nav.go).
+	keyBack        *ui.ListState
+	keyBackNow     bool
+	diffFocusAt    time.Time
+	branchMenuOpen bool
+	branchFilter   string
 
 	// pendingToast is flushed as a toast on the next frame (background lanes
 	// cannot toast).

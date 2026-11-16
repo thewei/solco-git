@@ -158,7 +158,7 @@ func (s *Shell) commitsPane(c *ui.Context, pal *gdPalette) {
 			return
 		}
 		cm := entries[i]
-		current := s.gdReviewingCommit() && s.git.commitHash == cm.Hash
+		current := s.commitCursorHash() == cm.Hash
 		// Padding carries no vertical inset on purpose: the graph glyph is
 		// the row's pitch, and rows must tile edge to edge for the lane
 		// wires to run unbroken (the compact All Commits list, 2026-10-14).
@@ -202,6 +202,7 @@ func (s *Shell) commitsPane(c *ui.Context, pal *gdPalette) {
 			halo = designTokens(t.Dark).SidebarHover.Over(t.Background)
 		}
 		if row.Clicked() {
+			s.commitCursorRelease()
 			if s.pickCommit(entries, cm.Hash, row.ClickModifiers()) {
 				s.reviewCommit(cm.Hash)
 			}
@@ -306,12 +307,19 @@ func (s *Shell) commitsPane(c *ui.Context, pal *gdPalette) {
 				ui.Text(c, gdRelativeTime(cm.Time)).FontSize(Typography().BodySmall).TextColor(muted).Width(commitDateColW).SingleLine()
 			}
 		})
-	}).Grow(1).MinHeight(0).Padding(4, 8)
+	}).Grow(1).MinHeight(0).Padding(4, 8).
+		// Focusable so a click or Tab hands the list the keys (keymap_nav.go); the
+		// selected row is its cursor, so the list draws no ring of its own.
+		Focusable().FocusRing(false)
 	list.Children(func() {
 		if len(entries) == 0 {
 			quietNote(c, "No matching commits")
 		}
 	})
+	s.commitKeys(list, entries)
+	s.enterDiffFrom(list, &s.commitsList)
+	s.restoreListFocus(c, &s.commitsList)
+	s.keymapPass(list, keysCommits)
 }
 
 // gdRelativeTime writes how long ago t was: just now, 5m ago, 3d ago.

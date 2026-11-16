@@ -112,7 +112,7 @@ func (s *Shell) commitTreeList(c *ui.Context) {
 			ui.Column(c).Grow(1).Center().Children(func() { ui.Spinner(c).Size(15, 15) })
 		default:
 			ui.Scroll(c).Grow(1).MinHeight(0).Children(func() {
-				s.navList(c, &s.nav.commitTree, false, ui.Column(c).FillWidth().Padding(4, sidebarGutter, 12), func() {
+				s.navList(c, &s.nav.commitTree, keysCommitFiles, false, ui.Column(c).FillWidth().Padding(4, sidebarGutter, 12), func() {
 					s.renderCommitTree(c, "", 0)
 				})
 			})

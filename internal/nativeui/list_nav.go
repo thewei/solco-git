@@ -17,17 +17,20 @@ const (
 	navBottom
 )
 
-// navBindings are the keys a focused row answers: the arrows, Home and End —
-// no letters, so there is no mode to enter and a filter field above the list
-// types normally. They are claimed so MyGo's own focus group (which wraps
-// round) leaves them to this model; PageUp/PageDown stay with the scroll
-// container, Enter/Space with the row's own click.
+// navBindings are the keys a focused row answers: the arrows, Home and End,
+// and J / K as Down / Up (LazyGit's walk; 2026-11-16). The letters belong to
+// the row only while it holds the focus, so there is no mode to enter and a
+// filter field above the list still types normally. They are claimed so
+// MyGo's own focus group (which wraps round) leaves them to this model;
+// PageUp/PageDown stay with the scroll container, Enter/Space with the row's
+// own click.
 var navBindings = []struct {
 	key ui.Key
 	act navAction
 }{
 	{ui.KeyDown, navDown}, {ui.KeyUp, navUp},
 	{ui.KeyLeft, navLeft}, {ui.KeyRight, navRight},
+	{ui.KeyJ, navDown}, {ui.KeyK, navUp},
 	{ui.KeyHome, navTop}, {ui.KeyEnd, navBottom},
 }
 
@@ -286,10 +289,11 @@ func (s *Shell) navPass() uint64 { return s.viewFrame }
 // navList builds a list's rows inside box: one Tab stop for the whole list
 // (MyGo's focus group; the keys inside are the model's own), and the rows
 // register with nav as they draw.
-func (s *Shell) navList(c *ui.Context, nav *listNav, autoFocus bool, box ui.Element, rows func()) {
+func (s *Shell) navList(c *ui.Context, nav *listNav, ctx keyContext, autoFocus bool, box ui.Element, rows func()) {
 	box.FocusGroup(ui.Vertical).Children(func() {
 		nav.begin(s.navPass(), autoFocus)
 		rows()
 		nav.finish(c)
 	})
+	s.keymapPass(box, ctx)
 }

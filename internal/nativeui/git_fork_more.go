@@ -34,6 +34,7 @@ type gitMoreState struct {
 	submodule submoduleDialogState
 	stash     stashDialogState
 	push      multiPushState
+	keys      keyHelpState
 
 	autoFetchTimer *time.Timer
 }
@@ -758,6 +759,7 @@ func (s *Shell) gitMoreDialogs(c *ui.Context) {
 	s.submoduleDialog(c)
 	s.stashDialog(c)
 	s.multiPushDialog(c)
+	s.keyHelpSheet(c)
 }
 
 // gdFileLogItems is the file menus' shared Finder / History / Blame group (one

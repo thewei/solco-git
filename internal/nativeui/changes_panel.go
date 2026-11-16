@@ -65,7 +65,41 @@ func (s *Shell) gdChangedTreeList(c *ui.Context, pal *gdPalette, rows []gitworkb
 			onClick(row)
 		}
 	}
+	s.changesKeys(list, rows, state, selected, choice, onClick)
+	s.enterDiffFrom(list, state)
+	s.restoreListFocus(c, state)
+	s.keymapPass(list, keysChanges)
 	return list
+}
+
+// changesKeys is J / K on a changed-file list: the walk MyGo's list already
+// does for ↑ / ↓, step by step, with the same outcome — the row chosen alone
+// and its file opened (2026-11-16).
+func (s *Shell) changesKeys(list ui.Element, rows []gitworkbench.FlatRow, state *ui.ListState, selected *int, choice *ui.Selection[string], onClick func(gitworkbench.FlatRow)) {
+	if len(rows) == 0 {
+		return
+	}
+	step := 0
+	switch {
+	case list.Shortcut(0, ui.KeyJ):
+		step = 1
+	case list.Shortcut(0, ui.KeyK):
+		step = -1
+	}
+	if step == 0 {
+		return
+	}
+	to := min(max(*selected+step, 0), len(rows)-1)
+	if *selected < 0 {
+		to = 0
+	}
+	*selected = to
+	state.ScrollIntoView(to)
+	if row := rows[to]; !row.Node.Dir && choice != nil {
+		choice.Clear()
+		choice.Add(row.Node.Path)
+		onClick(row)
+	}
 }
 
 // currentChangesTree builds (or reuses) the filtered changed-path tree.

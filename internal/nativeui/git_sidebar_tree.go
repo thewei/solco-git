@@ -73,7 +73,7 @@ func (s *Shell) gitRepositorySidebar(c *ui.Context) {
 			return
 		}
 		ui.Scroll(c).Grow(1).MinHeight(0).Children(func() {
-			s.navList(c, &s.nav.gitRefs, false, ui.Column(c).FillWidth().Padding(0, 0, 12), func() {
+			s.navList(c, &s.nav.gitRefs, keysRefs, false, ui.Column(c).FillWidth().Padding(0, 0, 12), func() {
 				s.gitSidebarSection(c, "Worktrees", len(s.git.worktrees), &gitSectionAction{
 					label: "Add worktree", menuItem: "Add Worktree…", disabled: s.git.opBusy,
 					run: func() {

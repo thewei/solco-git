@@ -123,7 +123,9 @@ func (s *Shell) gdDiffList(c *ui.Context, pal *gdPalette) {
 	// rows in view, so a drag reaches those; Copy Hunk and Copy File Patch in
 	// the line menu cover the rest.
 	s.git.gdHover = gdHoverLine{}
-	host := ui.Column(c).Grow(1).MinHeight(0).Selectable().Bind(&s.git.gdHostRef)
+	host := ui.Column(c).Grow(1).MinHeight(0).Selectable().Bind(&s.git.gdHostRef).
+		// Focusable so a click in the diff hands it the keys (J / K).
+		Focusable().FocusRing(false)
 	host.HandleInput(func(ev ui.InputEvent) bool {
 		switch ev.Kind {
 		case ui.InputPointerUp:
@@ -138,6 +140,13 @@ func (s *Shell) gdDiffList(c *ui.Context, pal *gdPalette) {
 		ui.List(c, &s.git.gdList, len(s.git.gdRows), func(i int) { s.gdDiffRow(c, pal, i) }).
 			Grow(1).MinHeight(0).Padding(0, gdListMargin, 24).Label("Changes")
 	})
+	s.takeDiffFocus(host)
+	if host.Shortcut(0, ui.KeyJ) {
+		s.gdNextHunk(1)
+	}
+	if host.Shortcut(0, ui.KeyK) {
+		s.gdNextHunk(-1)
+	}
 
 	// The file at the top follows the scrolling, and the tree with it.
 	if first, _ := s.git.gdList.Visible(); first >= 0 && first < len(s.git.gdRows) && s.git.gdRows[first].kind != gdRowEnd {
@@ -964,10 +973,12 @@ func (s *Shell) gdShortcuts(c *ui.Context) {
 		// No diff list is up to move within (empty panel / still loading).
 		return
 	}
-	if c.Shortcut(0, ui.KeyJ) || c.Shortcut(ui.Ctrl, ui.KeyDown) {
+	// J / K step hunks only while the diff holds the keyboard (gdDiffList):
+	// in a list they walk rows, as in LazyGit.
+	if c.Shortcut(ui.Ctrl, ui.KeyDown) {
 		s.gdNextHunk(1)
 	}
-	if c.Shortcut(0, ui.KeyK) || c.Shortcut(ui.Ctrl, ui.KeyUp) {
+	if c.Shortcut(ui.Ctrl, ui.KeyUp) {
 		s.gdNextHunk(-1)
 	}
 	if c.Shortcut(ui.Alt, ui.KeyZ) {
