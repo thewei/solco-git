@@ -144,7 +144,7 @@ func (s *Shell) takeDiffFocus(host ui.Element) {
 		}
 		s.diffFocusAt = time.Time{}
 	}
-	if host.Shortcut(0, ui.KeyEscape) && s.keyBack != nil {
+	if host.Shortcut(0, ui.KeyEscape) && !s.diffRangeCancel() && s.keyBack != nil {
 		s.keyBackNow = true
 	}
 }

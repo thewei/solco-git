@@ -203,6 +203,7 @@ type Shell struct {
 	// refRows records, as the references tree is drawn, what each row stands for.
 	refRows        map[string]refTarget
 	diffFocusAt    time.Time
+	diffLines      diffLineCursor // the keyboard's line in the chosen hunk (keymap_diff_lines.go)
 	branchMenuOpen bool
 	branchFilter   string
 

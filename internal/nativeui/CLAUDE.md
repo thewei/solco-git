@@ -22,6 +22,7 @@ Solco Git 的全部呈现层；每个文件开头的 L3 头（`[INPUT]/[OUTPUT]/
 - `keymap_changes.go`（P2）：Changes 上下文的键位行——Space 暂存/取消暂存、A 整个列表、D 丢弃（仍先弹确认并留恢复点，只在 Unstaged）、S 储藏、I / ⇧I 忽略（只对未跟踪文件）、E 编辑器打开、O 在 Finder 显示、C / ⇧A 把键盘交给快速提交条的主题输入框（⇧A 同时勾上 Amend）；目标 = 多选，没有多选就是光标行（文件夹 = 其下文件）；`gdChangedTreeList` 在绑键前把这一帧的窗格/行/光标交给 `Shell.keyScope`（`changesScope`），事后清空；已查看提交的文件列表（choice 为空）里这些键不作用。
 - `keymap_history.go`（P3）：Commits 与 References 上下文的键位行。Commits（目标 = 多选的一批，没有就是光标提交）：Space 检出（同双击）、N 在此新建分支、⇧T 在此打标签、T 回退（revert）、C 拣选、R 改写说明、S 压入下一个、⇧F fixup（F 已是 Fetch）、D 丢弃、⌥↑ / ⌥↓ 上下移、Y 复制哈希——多选时只有 C S ⇧F D ⌥↑ ⌥↓ 作用，单提交键不动；重写历史的键走 `openHistoryRewrite` 先出预览表。References（目标 = 光标所在的那一行，`gitTreeRow` 把每行身份登记进 `Shell.refRows`、`nav.gitRefs.cursor` 指向当前行）：Space 检出分支 / 远程分支 / 应用储藏、N 新分支（标签行上是新标签）、⇧M 合并进当前、R 把当前分支变基到它上面、⇧R 重命名分支 / 储藏、D 删除（分支 / 远程分支 / 标签 / 储藏，都先弹确认）、Y 复制名字；当前分支上 Space / ⇧M / R / D 不作用。
 - `keymap_diff.go`（P4）：Diff 上下文里会写 Git 的键——Space 暂存 / 取消暂存 J / K 所选的 hunk（点行号挑出了行就只动那几行，同 hunk 行上的按钮：`gdMoveLines`）、A 暂存 / 取消暂存整个文件（`gdRowAction`）；已查看的提交里 `gdStageSide` 不放行所以不作用。Diff 里「到处可用」的键只剩 `?`（`answersIn`：F P ⇧P Z 在 diff 里不会碰网络，速查表也不列它们）。
+- `keymap_diff_lines.go`（P4 续）：键盘逐行挑选——↑ ↓ 在 J / K 所选 hunk 的改动行（加 / 删，不停上下文行）间移动行光标，光标所在的行就是点行号挑出的行（写进同一份 `gdPick`），所以 Space 不用改；走到 hunk 尽头进入相邻 hunk；v 起一个范围（↑ ↓ 延伸，只在同一个 hunk 里；再按 v 结束并保留，Esc 先收范围、再按才还键盘给列表）；快照一换光标失效。⇧↑ ⇧↓ 不绑（窗口先当文本选区命令吃掉）。
 - `shell.go` / `shell_tab.go`：一个工作区 = 一个 Shell（Git + Files 所需的那部分状态）及其作为窗口成员的生命周期接缝；`view.go` 是工作区内的三个视图（Changes / Commits / Files），没有页面栈。
 - `frame.go`：三栏版面（侧栏｜标题带｜舞台）落点，侧栏主体按视图加 key；`viewTabs` 是直接铺在侧栏材质上的三行视图开关（2026-11-12 起，原页签条已退役）：一行一个图形加名称，选中的是整行铺满的侧栏选中色（`materialNavGroup` / `materialNavRow`，行高与圆角同树行），Changes 的计数贴行尾，行下一条细线，仍是名为 View 的单选组；侧栏不再有“仓库名 + 搜索 + 刷新”一行（2026-11-14）：搜索与刷新是标题带里侧栏开关右边的两颗按钮（`Window.sidebarSearchRefresh`，目标由 `Shell.sidebarTools` 按视图给：引用树或文件树；收起时点搜索先展开侧栏），搜索打开时 `sidebarSearchField` 才在视图行下画输入框；侧栏页脚 `sidebarFoot` = 工作区芯片 + Settings（原来的 "Fetched … ago" 搬进 Fetch 钮的提示 `fetchTip`）。
 - `boundary.go`：从 Solco 复制来的代码原本跨出去调用的几个小边界，在这里用本应用的语义落地。
@@ -114,6 +115,7 @@ UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差�
 - `keymap_changes_test.go`：P2 的合同（真实临时仓库）——Space 暂存光标文件 / 在 Staged 列表取消暂存 / 作用于多选的每个文件、A 暂存整个列表、D 先弹删除确认且文件未动、I 只给未跟踪文件写 .gitignore、S 开储藏单、C 之后键入进主题输入框、⇧A 勾 Amend、已查看提交里这些键不作用。
 - `keymap_history_test.go`：P3 的合同——Commits 的每个键开出与右键菜单同一个确认框 / 预览表 / 对话框；Space 真的把 HEAD 切到光标提交所在的分支；多选时单提交键不动、D 的预览表列出整批；引用树的键作用于光标行（登记表被拿掉即变红）、在当前分支上不作用。
 - `keymap_diff_test.go`：P4 的合同——没选 hunk 时 Space 不动；J 选到某文件首个 hunk 后 Space 只暂存它（另一个 hunk 仍未暂存）；点行号挑出的行 Space 只暂存那一行；A 暂存整个文件；diff 速查表只列 diff 自己答的键。
+- `keymap_diff_lines_test.go`：逐行挑选的合同——↓ 挑出下一个改动行、Space 只暂存那一行；v + ↓ ↓ 画出三行的范围，↑ 收回一行，Space 暂存范围；Esc 先收范围、第二下才离开 diff；↓ 过 hunk 尽头进入下一个 hunk、↑ 回去；diff 速查表列出这些键。
 - `gd_shortcuts_test.go`：Changes 视图的单键快捷键（⌥Z；J / K 已改为只在列表/diff 有焦点时生效，见 keymap_test.go）在提交主题输入框取走文本时让路——键入 jk 与 macOS 随后送来的 “Ω” 都进输入框、⌥Z 不切换换行；输入框之外 ⌥Z 照常切换。
 - `files_git_test.go`、`commit_tree_test.go`、`multi_push_test.go`、`image_compare_test.go`：2026-11-07「Solco Git」决定里 Files 一节、按提交看整棵树、多引用推送、图片对比的回归防线。
 
