@@ -72,6 +72,10 @@ func (s *Shell) gitRepositorySidebar(c *ui.Context) {
 			busyNote(c, "Reading references…")
 			return
 		}
+		if s.refRows == nil {
+			s.refRows = map[string]refTarget{}
+		}
+		clear(s.refRows)
 		ui.Scroll(c).Grow(1).MinHeight(0).Children(func() {
 			s.navList(c, &s.nav.gitRefs, keysRefs, false, ui.Column(c).FillWidth().Padding(0, 0, 12), func() {
 				s.gitSidebarSection(c, "Worktrees", len(s.git.worktrees), &gitSectionAction{
@@ -257,7 +261,7 @@ func (s *Shell) gitRepositorySidebar(c *ui.Context) {
 						}
 						shown++
 						st := stash
-						s.gitTreeRow(c, gitTreeItem{title: stashTitle(st.Subject), tooltip: st.Ref + "  " + st.Subject, kind: "Stash", glyph: iconStash, commit: st.Base, review: st.Hash}, func() {
+						s.gitTreeRow(c, gitTreeItem{title: stashTitle(st.Subject), tooltip: st.Ref + "  " + st.Subject, kind: "Stash", glyph: iconStash, commit: st.Base, review: st.Hash, name: st.Ref}, func() {
 							s.copyToClipboard(st.Ref)
 						}, func(m *ui.Menu) {
 							if m.Item("Apply Stash…").Disabled(s.git.opBusy).Chosen() {

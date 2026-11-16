@@ -184,6 +184,7 @@ func (s *Shell) gitRenderRefTree(c *ui.Context, scope string, roots []*gitRefNod
 			}
 		} else {
 			item.ref = gitRefNamespace[scope] + value
+			item.name = value
 		}
 		var eye *gitEye
 		if refs := s.graphHideable(scope, n); len(refs) > 0 {
@@ -267,6 +268,10 @@ type gitTreeItem struct {
 	ref, commit string
 	// review, when set, is what the reviewer opens for the located commit.
 	review string
+	// name is what the row stands for when the keyboard acts on it: the
+	// branch, remote-tracking ref or tag name, or the stash ref. Folders and
+	// worktrees have none.
+	name string
 	// eye hides the row's refs from the graph; nil where nothing can be hidden.
 	eye *gitEye
 }
@@ -326,6 +331,9 @@ func (s *Shell) gitTreeRow(c *ui.Context, it gitTreeItem, action func(), menu fu
 		}
 	}
 	key := gitRefRowKey(it.title, it.tooltip)
+	if it.name != "" {
+		s.refRows[key] = refTarget{kind: it.kind, name: it.name, current: it.current}
+	}
 	var eyeAction *treeRowAction
 	if it.eye != nil {
 		glyph := iconEye

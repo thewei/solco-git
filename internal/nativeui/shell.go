@@ -200,9 +200,11 @@ type Shell struct {
 	// keyFocusSubject hands the keyboard to the commit bar's subject once.
 	keyScope        *changesScope
 	keyFocusSubject bool
-	diffFocusAt     time.Time
-	branchMenuOpen  bool
-	branchFilter    string
+	// refRows records, as the references tree is drawn, what each row stands for.
+	refRows        map[string]refTarget
+	diffFocusAt    time.Time
+	branchMenuOpen bool
+	branchFilter   string
 
 	// pendingToast is flushed as a toast on the next frame (background lanes
 	// cannot toast).

@@ -30,7 +30,10 @@ func TestTheKeymapAgreesWithItself(t *testing.T) {
 		if a.run == nil {
 			continue
 		}
-		if a.mods&^ui.Shift != 0 {
+		// ⌥ with an arrow types nothing, so the arrows may carry it (move a commit);
+		// ⌥ with a letter types a character, and ⌘ ⌃ belong to the menu bar.
+		arrow := a.key == ui.KeyUp || a.key == ui.KeyDown
+		if a.mods&^ui.Shift != 0 && !(arrow && a.mods == ui.Alt) {
 			t.Errorf("%q binds a modifier besides ⇧: letters with ⌘ ⌃ ⌥ belong to the menu bar (⌥ also types a character on macOS)", a.label)
 		}
 		s := slot{a.ctx, a.mods, a.key}

@@ -63,7 +63,7 @@ func repoReady(s *Shell) bool { return s.git != nil && s.git.root != "" }
 
 // keymap is the one table the keys are bound from and the `?` sheet is read
 // from. A new key is a new row here, and an action that already exists.
-var keymap = slices.Concat(keymapBase, changesKeyRows)
+var keymap = slices.Concat(keymapBase, changesKeyRows, historyKeyRows)
 
 var keymapBase = []keyAction{
 	// Anywhere a list holds the keyboard.
