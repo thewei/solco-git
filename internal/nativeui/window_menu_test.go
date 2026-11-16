@@ -221,3 +221,28 @@ func TestViewMenuHighlightMovedLinesSwitch(t *testing.T) {
 		t.Errorf("after choosing it again: hide=%v checked=%v, want the highlight back on", w.settings.Workbench.HideMovedLines, item().Checked)
 	}
 }
+
+// Help ▸ Keyboard Shortcuts opens the keys sheet of the view in front: the
+// menu is the way in for someone who does not know the `?` key, and it carries
+// no letter accelerator (keymap.go: a letter key would steal typing).
+func TestHelpMenuOpensTheKeyboardShortcuts(t *testing.T) {
+	w, pump, tt := openThree(t)
+	item := itemNamed(menuNamed(w, "Help"), "Keyboard Shortcuts")
+	if item == nil || item.Accelerator != "" || item.Disabled {
+		t.Fatalf("Help ▸ Keyboard Shortcuts = %+v, want an enabled item with no accelerator", item)
+	}
+	sh := w.activeShell()
+	item.Click(item, nil)
+	settle(tt, pump, 2)
+	if st := sh.gitMore.keys; !st.open || st.ctx != keysChanges {
+		t.Fatalf("the item must open the Changes keys, got %+v", st)
+	}
+	sh.gitMore.keys.open = false
+	sh.setView(viewCommits)
+	settle(tt, pump, 2)
+	item.Click(item, nil)
+	settle(tt, pump, 2)
+	if st := sh.gitMore.keys; !st.open || st.ctx != keysCommits {
+		t.Fatalf("in the Commits view the item must open the Commits keys, got %+v", st)
+	}
+}

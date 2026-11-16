@@ -2,7 +2,7 @@ package nativeui
 
 /**
  * [INPUT]: keymap.go 的 keysIn（键位表）、tooltip.go 的 tipKeycaps（键帽）、dialogs.go 的 modalTitle
- * [OUTPUT]: openKeyHelp（`?`：列出当前上下文的键与到处都能用的键）、keyHelpSheet（浮层本身，由 gitMoreDialogs 挂载）
+ * [OUTPUT]: openKeyHelp（`?`：列出当前上下文的键与到处都能用的键）、openKeyHelpForView（Help 菜单的 Keyboard Shortcuts：按当前视图选上下文，菜单不靠字母键）、keyHelpSheet（浮层本身，由 gitMoreDialogs 挂载）
  * [POS]: LazyGit 的 `?`：键位不靠记，按一下就看到「这个列表里按什么」；读的是 keymap 本身，没有第二份清单
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -16,6 +16,19 @@ type keyHelpState struct {
 
 func (s *Shell) openKeyHelp(ctx keyContext) {
 	s.gitMore.keys = keyHelpState{open: true, ctx: ctx}
+}
+
+// openKeyHelpForView is the Help menu's entry: the keys of the view in front
+// (no list holds the keyboard when a menu is used).
+func (s *Shell) openKeyHelpForView() {
+	ctx := keysChanges
+	switch s.currentView() {
+	case viewCommits:
+		ctx = keysCommits
+	case viewFiles:
+		ctx = keysFiles
+	}
+	s.openKeyHelp(ctx)
 }
 
 func (s *Shell) keyHelpSheet(c *ui.Context) {

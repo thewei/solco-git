@@ -207,7 +207,11 @@ func (w *Window) MenuBar() *mygo.Menu {
 			do("Show Next Workspace", accelNextCtrlTab, func() { w.stepWorkspace(1) }),
 			do("Show Previous Workspace", accelPrevCtrlTab, func() { w.stepWorkspace(-1) }),
 		}},
-		{Role: mygo.RoleHelp},
+		// The role keeps AppKit's Help menu (its search field); the item
+		// has no accelerator: a letter key would steal typing (keymap.go).
+		{Role: mygo.RoleHelp, Submenu: []*mygo.MenuItem{
+			repo("Keyboard Shortcuts", "", func(sh *Shell) { sh.openKeyHelpForView() }),
+		}},
 	})
 }
 
