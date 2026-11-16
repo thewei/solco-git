@@ -856,7 +856,33 @@ func (s *Shell) ensureAutoFetch() {
 // merges or pushes.
 func (s *Shell) autoFetchTick() {
 	s.rearmAutoFetch()
-	if s.git == nil || s.git.root == "" || s.git.opBusy || s.git.committing || s.git.runner == nil {
+	s.quietFetch(0)
+}
+
+// fetchOnFocusAfter is how old the last fetch must be before coming back to
+// the window fetches again (2026-11-16 decision).
+const fetchOnFocusAfter = 10 * time.Minute
+
+// fetchOnActivation is the window gaining focus: a quiet fetch when the last
+// one is older than fetchOnFocusAfter, unless Settings turned it off.
+func (s *Shell) fetchOnActivation() {
+	if s.settings.Workbench.NoFetchOnFocus {
+		return
+	}
+	s.quietFetch(fetchOnFocusAfter)
+}
+
+// quietFetch fetches the open repository's remote in the background. With
+// staleAfter > 0 it first asks when the remotes were last fetched and does
+// nothing if that is more recent, and a started attempt blocks the next one
+// for as long — so an offline remote is tried once per period. Never while a
+// Git operation runs or another quiet fetch is in flight.
+func (s *Shell) quietFetch(staleAfter time.Duration) {
+	if s.git == nil || s.git.root == "" || s.git.opBusy || s.git.committing || s.git.runner == nil || s.git.quietFetching {
+		return
+	}
+	now := timeNow()
+	if staleAfter > 0 && !s.git.lastQuietFetch.IsZero() && now.Sub(s.git.lastQuietFetch) < staleAfter {
 		return
 	}
 	root := s.git.root
@@ -864,24 +890,37 @@ func (s *Shell) autoFetchTick() {
 	if up := s.git.upstream; up.OK {
 		remote = up.Remote
 	}
+	s.git.quietFetching = true
+	s.git.lastQuietFetch = now
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), gitNetworkTimeout)
 		defer cancel()
+		fetched := false
+		defer func() {
+			s.applyOnUI(func() {
+				if s.git == nil || s.git.root != root {
+					return
+				}
+				s.git.quietFetching = false
+				if !fetched || s.git.opBusy {
+					return
+				}
+				s.git.cache.Invalidate(root)
+				s.loadBranches()
+				s.checkFetchedAt(true)
+			})
+		}()
+		if staleAfter > 0 {
+			if at, ok := s.git.runner.FetchedAt(ctx, root); ok && timeNow().Sub(at) < staleAfter {
+				return
+			}
+		}
 		if remote == "" {
 			remote = s.git.runner.DefaultRemote(ctx, root)
 		}
 		if remote == "" {
 			return
 		}
-		if err := s.git.runner.Fetch(ctx, root, remote); err != nil {
-			return
-		}
-		s.applyOnUI(func() {
-			if s.git == nil || s.git.root != root || s.git.opBusy {
-				return
-			}
-			s.git.cache.Invalidate(root)
-			s.loadBranches()
-		})
+		fetched = s.git.runner.Fetch(ctx, root, remote) == nil
 	}()
 }

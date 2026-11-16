@@ -117,7 +117,8 @@ const refsPollEvery = 30 * time.Second
 // must show without a manual refresh, which stays as the explicit fallback —
 // the fresh data is the notification. It reads the changes snapshot, the
 // references with the commit graph and, when Files is in front, the listing
-// (quietly: the tree is never emptied first). A running Git operation owns the
+// (quietly: the tree is never emptied first), and fetches the remote when the
+// last fetch is over ten minutes old. A running Git operation owns the
 // references and re-reads them itself when it ends.
 func (s *Shell) refreshGitOnActivation() {
 	if s.git == nil || s.git.root == "" {
@@ -138,6 +139,7 @@ func (s *Shell) refreshGitOnActivation() {
 	if s.currentView() == viewFiles {
 		s.refreshFilesQuiet()
 	}
+	s.fetchOnActivation()
 }
 
 // loadSequencer refreshes only the merge/revert/cherry-pick probe (one

@@ -91,6 +91,9 @@ UI kit（复制自 Solco；`scripts/kit-parity.sh` 列出与 `../solco` 的差�
 - `clean_state_layout_test.go`：干净工作区与有改动时文件列表栏同一 X、中心横幅在列表右侧、没有 Recent Commits / View All Commits 的独立页；领先时中心给 “Push 1 commit” 与 “↑1 ahead of origin/main”；变异（干净时丢掉列表栏）必红。
 - `ui_polish_test.go`：2026-11-16 界面打磨批次——侧栏开关 / Split / Unified 三个框形图标各不相同（Unified 不再是上下分割的框）、引用分组头带自己的图标且标题与行标题同一 X、`middlePath` 从中间收短并保留最后一级（按字符数计，不按字节）、作者列在 760–900 的中心只剩头像（名字在提示里）、设置滚动区随窗口增高（460 起，到 720）、点开提交时只有提交条的一处「Reading commit…」；每条规则做过变异检查。
 - `refresh_freshness_test.go`：2026-11-16 「窗口拿到焦点、以及开着的每个节拍里就重读」的合同——终端里新建的分支 / 提交 / 文件不必 ⌘R 就出现（`Window.onWindowFocus` → `refreshGitOnActivation`：快照 + 引用与提交图 + Files 静默重读；节拍 `pollGit` 每 `refsPollEvery`=30 s 重读引用）、两秒内的焦点来回只读一次、有 Git 操作在跑时不抢读、Files 的重读不先清空列表（不 bump `filesGen`）；每条规则做过变异检查。真实窗口的 `OnFocus` 在 `AttachWindow` 里接线。
+- `focus_fetch_test.go`：2026-11-16 「窗口回来时距上次 Fetch 超过 10 分钟就静默 fetch」的合同——`Window.onWindowFocus` → `fetchOnActivation` → `quietFetch`：FETCH_HEAD 新鲜则不 fetch、同一仓库不并发、Git 操作 / 提交中不插手、失败静默、设置「Fetch when you return」（`workbench.no_fetch_on_focus`）关掉就不 fetch，落地后重读引用与提交图；变异：去掉 10 分钟门槛 / 忙时守卫 / 设置开关各有一条红灯。
+- `ref_cap_test.go`：2026-11-16 引用列表每组最多画 `gitRefRowCap`=100 行、其余收在「Show N more」一行（点开只展开该组，`gitRefsAll`）、收起的文件夹只算一行、搜索画全部命中；变异：数量算错（负数）、搜索也封顶各一条红灯。
+- `list_focus_ring_test.go`：2026-11-16 侧栏列表行与分区标题被键盘走到时画蓝色焦点环（内缩 `treeRowRingInset`），鼠标点选不画环；变异：关掉行 / 标题的环各一条红灯。
 - `window_render_test.go`、`files_evidence_test.go`：与设计稿逐屏对照的 PNG 证据（设置 `SOLCOGIT_EVIDENCE` 才落盘）。
 - `terminal_solco_test.go`：终端归属的合同——默认是抽屉；选 In Solco 后 ⌃` / 按钮 / View 菜单项把仓库根交给 Solco 且不开抽屉；Solco 没装就说明、不悄悄退回抽屉；设置页的二选一写进偏好、菜单项与按钮随之改；去掉归属判断 / 没装时回退 / 换目录三个变异必红。
 - `terminal_drawer_test.go`：shell 在仓库根起、包装层的 pid 就是 shell 的 pid、Close / Restart 无进程直接结束有进程先问（Cancel 不动、确认才杀进程）、移除工作区有进程先问、shell 退出后显示退出码；取不到终端库时整组跳过；去掉询问 / Dir / pid 文件三个变异检查必红。

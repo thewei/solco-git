@@ -135,6 +135,12 @@ type sidebarTreeSpec struct {
 	OnSelect   func()
 }
 
+// treeRowRingInset puts a row's keyboard focus ring inside its edge: the
+// sidebar's scroll clips whatever goes past it, and the selection wash a
+// focused row also wears is the same grey as a selected one, so the ring is
+// what says where the keyboard is (2026-11-16 decision).
+const treeRowRingInset float32 = -2
+
 // sidebarTreeRow draws one row of the grid and returns it with whether it was
 // clicked. clicked also reports the keyboard's activation (o, l and h on a
 // row whose fold state asks for it), so a tree answers the mouse and the keys
@@ -150,7 +156,7 @@ func (s *Shell) sidebarTreeRow(c *ui.Context, spec sidebarTreeSpec) (ui.Element,
 		label = spec.Title
 	}
 	row := tipped(c, ui.ButtonBase(c.Key(spec.Key)).FillWidth().MinWidth(0).Height(s.treeRowHeight()).
-		Padding(0, treeRowPad).Radius(treeRowRadius).FocusRing(false).AlignItems(ui.Center).
+		Padding(0, treeRowPad).Radius(treeRowRadius).FocusRing(true).FocusRingOffset(treeRowRingInset).AlignItems(ui.Center).
 		Label(label), spec.Tooltip)
 	glyph := t.TextMuted
 	switch {
@@ -264,7 +270,7 @@ func (s *Shell) sidebarSectionHeader(c *ui.Context, spec sidebarSectionSpec) (ui
 	t := c.Theme()
 	ui.Box(c).Height(4).Shrink(0)
 	row := tipped(c, ui.ButtonBase(c.Key(spec.Key)).FillWidth().Height(s.treeRowHeight()+2).
-		Padding(0, treeRowPad).Radius(treeRowRadius).FocusRing(false).AlignItems(ui.Center).
+		Padding(0, treeRowPad).Radius(treeRowRadius).FocusRing(true).FocusRingOffset(treeRowRingInset).AlignItems(ui.Center).
 		Label("Toggle "+spec.Title), spec.Tooltip)
 	switch {
 	case spec.Nav.showsCursor(row):

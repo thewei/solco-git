@@ -2,6 +2,7 @@ package nativeui
 
 import (
 	"cmp"
+	"fmt"
 	"slices"
 	"sort"
 	"strings"
@@ -121,8 +122,35 @@ func (s *Shell) gitRenderRefTree(c *ui.Context, scope string, roots []*gitRefNod
 	case "remote":
 		leafGlyph = iconCloud
 	}
+	// The sidebar builds every row each frame (it is not a virtual list), so a
+	// tree of hundreds of refs stops at gitRefRowCap rows with a "Show N more"
+	// row; a search draws every match (2026-11-16 decision).
+	searching := strings.TrimSpace(s.gitRefsFilter) != ""
+	var countRows func(*gitRefNode) int
+	countRows = func(n *gitRefNode) int {
+		rows := 1
+		if len(n.children) > 0 && !s.gitFolded(s.gitFoldKey(scope+"/"+n.full)) {
+			for _, child := range n.children {
+				rows += countRows(child)
+			}
+		}
+		return rows
+	}
+	total := 0
+	for _, root := range roots {
+		total += countRows(root)
+	}
+	opened := s.gitRefsAll[scope]
+	limited := !searching && !opened && total > gitRefRowCap
+	budget := gitRefRowCap
 	var visit func(*gitRefNode, int)
 	visit = func(n *gitRefNode, level int) {
+		if limited {
+			if budget <= 0 {
+				return
+			}
+			budget--
+		}
 		folder := len(n.children) > 0
 		key := s.gitFoldKey(scope + "/" + n.full)
 		closed := s.gitFolded(key)
@@ -194,6 +222,31 @@ func (s *Shell) gitRenderRefTree(c *ui.Context, scope string, roots []*gitRefNod
 	for _, root := range roots {
 		visit(root, level)
 	}
+	switch {
+	case limited:
+		s.gitRefsMoreRow(c, scope, fmt.Sprintf("Show %d more", total-gitRefRowCap), true)
+	case opened && !searching && total > gitRefRowCap:
+		s.gitRefsMoreRow(c, scope, "Show fewer", false)
+	}
+}
+
+// gitRefRowCap is how many rows one ref tree draws before "Show N more".
+const gitRefRowCap = 100
+
+// gitRefsMoreRow is the tree's last row: a quiet link that opens the whole
+// list, or shuts it back to gitRefRowCap rows.
+func (s *Shell) gitRefsMoreRow(c *ui.Context, scope, label string, open bool) {
+	t := c.Theme()
+	more := ui.ButtonBase(c).Padding(2, 0, 4, treeGlyphX(0)).Label(label).Children(func() {
+		ui.Text(c, label).FontSize(Typography().BodySmall).TextColor(t.Accent)
+	})
+	if !more.Clicked() {
+		return
+	}
+	if s.gitRefsAll == nil {
+		s.gitRefsAll = map[string]bool{}
+	}
+	s.gitRefsAll[scope] = open
 }
 
 // gitTreeItem is one row of a Git sidebar tree.

@@ -70,6 +70,11 @@ func (w *Window) settingsSheet(c *ui.Context) {
 						}),
 					)
 					settingsGroup(c, "Git",
+						row("Fetch when you return", "When you come back to the window and the last fetch is more than ten minutes old, fetches the remote once, quietly. It never merges or pushes.", func() {
+							if on, changed := settingSwitch(c, "Fetch when you return", !cfg.Workbench.NoFetchOnFocus); changed {
+								w.change(func(v *settings.Settings) { v.Workbench.NoFetchOnFocus = !on })
+							}
+						}),
 						row("Auto-fetch", "Fetches the remote of each workspace you have opened this session, quietly, in the background. It never merges or pushes.", func() {
 							label := autoFetchLabel(cfg.Workbench.AutoFetchMinutes)
 							if selectField(c, &label, autoFetchLabels()).Label("Auto-fetch").Changed() {

@@ -158,6 +158,13 @@ type gitService struct {
 	// read, by any path; the beat re-reads them once refsPollEvery has passed.
 	lastRefsPoll time.Time
 
+	// lastQuietFetch is when a background fetch (the timer's or the focus's)
+	// was last started, whatever came of it: an offline remote is tried once
+	// per stale period, not at every focus. quietFetching keeps two from
+	// running at once.
+	lastQuietFetch time.Time
+	quietFetching  bool
+
 	// selected file for Changes↔Diff sync with oscillation guard
 	revealPath  string
 	revealAt    time.Time

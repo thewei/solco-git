@@ -44,6 +44,10 @@ type WorkbenchSettings struct {
 	// that often in the background. 0 = off (default). Fetch only: never
 	// merges or pushes.
 	AutoFetchMinutes int `json:"auto_fetch_minutes,omitempty"`
+	// NoFetchOnFocus turns off the quiet fetch that runs when the window gains
+	// focus and the last fetch is more than ten minutes old. Stored the other
+	// way round so the default is on (2026-11-16 decision).
+	NoFetchOnFocus bool `json:"no_fetch_on_focus,omitempty"`
 	// SplitDiff persists the unified/split diff layout choice.
 	SplitDiff bool `json:"split_diff,omitempty"`
 	// GraphHidden maps a repository root to the full ref names the user hid

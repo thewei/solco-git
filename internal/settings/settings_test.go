@@ -177,7 +177,7 @@ func TestDocumentKeysAreTheKnownOnes(t *testing.T) {
 		"general", "general.appearance", "general.restore_window", "general.density", "general.high_contrast",
 		"workbench", "workbench.auto_fetch_minutes", "workbench.split_diff", "workbench.graph_hidden",
 		"workbench.graph_folded", "workbench.tree_folds", "workbench.hide_stashes", "workbench.hide_moved_lines",
-		"workbench.terminal_in_solco", "workbench.format_on_save", "workbench.auto_save",
+		"workbench.terminal_in_solco", "workbench.format_on_save", "workbench.auto_save", "workbench.no_fetch_on_focus",
 		"window", "window.workspaces", "window.workspaces.root", "window.workspaces.view",
 		"window.tabs", "window.tabs.root", "window.tabs.view", "window.active", "window.recent",
 		"window.sidebar_width", "window.panes", "window.panes.staged_height", "window.panes.history_height",

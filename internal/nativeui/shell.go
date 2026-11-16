@@ -161,8 +161,11 @@ type Shell struct {
 	gitFilePaneClosedWide bool
 
 	// The Git reference tree is a presentation projection, scoped to the repo.
-	gitTreeClosed   map[string]bool
-	gitRefsFilter   string
+	gitTreeClosed map[string]bool
+	gitRefsFilter string
+	// gitRefsAll holds the ref trees (scope: local, remote, tag) the user opened
+	// past gitRefRowCap with "Show N more".
+	gitRefsAll      map[string]bool
 	gitCommitFilter string
 	// gitRefsSearchOpen shows the sidebar head's reference search field;
 	// gitRefsSelected is the ref row a single click selected (kind:name),
